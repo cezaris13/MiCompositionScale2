@@ -29,18 +29,12 @@ class ScanDelegate(DefaultDelegate):
 
                 self.last_raw_data = raw_data
                 ctrlBit = raw_data[1]
-                is_kg = (ctrlBit & 1 << 1) != 0 # work on this
-                is_lbs = (ctrlBit & (1 << 2)) != 0 # and this
-                is_jin = (ctrlBit & ( 1 << 4) ) != 0 # and this
-                is_stabilized = (ctrlBit & (1 << 5)) != 0 # this works
-                is_weight_removed = (ctrlBit & (1 << 7)) != 0 # this works
-                print("is lbs", is_lbs)
-                print("is kg", is_kg)
-                print("is jin", is_jin)
-                print("is stabilized", is_stabilized)
-                print("is weight removed", is_weight_removed)
-
-                weight = (((raw_data[12] & 0xFF) << 8) | (raw_data[11] & 0xFF)) / 200 # this is done
+                is_lbs = bool(ctrlBit & 1)
+                is_kg = bool(ctrlBit & (1 << 2))
+                is_jin = bool(ctrlBit & (1 << 4) )
+                is_stabilized = bool(ctrlBit & (1 << 5))
+                is_weight_removed = bool(ctrlBit & (1 << 7))
+                weight = int.from_bytes(raw_data[11:13], byteorder="little") / 100
 
                 if is_jin:
                     unit = "jin"
@@ -48,12 +42,12 @@ class ScanDelegate(DefaultDelegate):
                     unit = "lbs"
                 elif is_kg:
                     unit = "kg"
-                    weight /= 2  # catty to kg
+                    weight /= 2  # lbs to kg
                 else:
                     unit = "unknown"
 
-                print("weight:", weight, unit)
                 if is_stabilized is True and is_weight_removed is False:
+                    print("weight:", weight, unit)
                     self.callback(weight, unit)
 
 
