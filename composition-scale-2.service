@@ -1,0 +1,14 @@
+[Unit]
+Description = Get Xiaomi Mi Composition Scale 2 weight and publish to fitbit
+After = network.target
+StartLimitIntervalSec = 0
+
+[Service]
+Type = simple
+Restart = always
+RestartSec = 5
+User = root
+ExecStart = /$HOME/scripts/compositionScale/main.py
+
+[Install]
+WantedBy = multi-user.target
