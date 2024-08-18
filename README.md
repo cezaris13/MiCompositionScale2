@@ -1,8 +1,4 @@
-# mi-scale-2
-
-Get Xiaomi Mi Smart Scale 2 weight and publishing to mqtt
-
-*Tested only on Raspberry Pi 3b + Mi Scale 2*
+Get Xiaomi Mi Composition Scale 2 weight and publishing to fitbit
 
 ## Requirements
 
@@ -12,7 +8,7 @@ Get Xiaomi Mi Smart Scale 2 weight and publishing to mqtt
  * root permission for `bluepy.btle`
 
 ```bash
-sudo pip install -r requirements.txt
+sudo make install
 ```
 
 ## Usage
@@ -22,39 +18,18 @@ always run with `sudo` or from `root`:
 ```bash
 cp .env.dist .env
 vim .env
-sudo ./main.py
+sudo make run
 # sudo ./main.py --help
-# sudo ./main.py --loglevel=DEBUG
+# sudo make debug
 ```
 
 ## Autostart
 
 ```bash
-sudo cp mi-scale-2.service /etc/systemd/system/
-sudo systemctl enable mi-scale-2
-sudo systemctl start mi-scale-2
+sudo make add-service
+sudo make enable-service
+
 ```
-
-## Integrate with Home Assistant
-
-[![qbbr-mi-scale-2-home-assistant-integration](https://i.imgur.com/rRetkYZ.png)](https://i.imgur.com/rRetkYZ.png)
-
-```yaml
-# configuration.yaml:
-mqtt:
-    sensor:
-      - name: "my_weight"
-        state_topic: "miscale/qbbr/weight"
-        force_update: true
-        unit_of_measurement: "kg"
-        state_class: "measurement"
-        icon: mdi:scale
-
-# customize.yaml:
-sensor.my_weight:
-    friendly_name: Мой вес
-```
-
 ## Help
 
 get dev mac address:
@@ -70,7 +45,7 @@ sudo hciconfig hci0 reset
 sudo invoke-rc.d bluetooth restart
 ```
 
-### Reverse Engineering RAW Schema for Mi Scale 2
+### Reverse Engineering RAW Schema for Mi Composition Scale 2
 
 !!! *slightly different than from openScale wiki* !!!
 
