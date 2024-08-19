@@ -30,8 +30,8 @@ def main():
         # If someone finds more reliable source, create an issue.
         if lastWeight - 3 < weight < lastWeight + 3:
             if hasImpedance:
-                updateBodyFat(getFatPercentage(impedance, weight),dateTime)
-            updateBodyWeight(weight,dateTime)
+                updateBodyFat(getFatPercentage(impedance, weight), dateTime)
+            updateBodyWeight(weight, dateTime)
         else:
             log.warning("weight is not between %s and %s, skip publishing", config.get("MIN_WEIGHT"),
                         config.get("MAX_WEIGHT"))

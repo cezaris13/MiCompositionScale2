@@ -26,7 +26,6 @@ def processPacket(rawData):
         unit = "kg"
         weight /= 2  # lbs to kg
 
-    print("body fat:", getFatPercentage(impedance,weight))
     return weight, unit, hasImpedance, impedance, isStabilized, isWeightRemoved, dateTime
 
 def getFatPercentage(impedance, weight):
