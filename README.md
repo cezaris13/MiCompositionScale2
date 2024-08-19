@@ -47,22 +47,33 @@ sudo invoke-rc.d bluetooth restart
 
 ### Reverse Engineering RAW Schema for Mi Composition Scale 2
 
-!!! *slightly different than from openScale wiki* !!!
+Payload format (year, impedance and weight are little endian):
 
-**byte 0:**
+* bytes 0 and 1: control bytes
+* bytes 2 and 3: year
+* byte 4: month
+* byte 5: day
+* byte 6: hours
+* byte 7: minutes
+* byte 8: seconds
+* bytes 9 and 10: impedance
+* bytes 11 and 12: weight (`/100` for pounds and catty, `/200` for kilograms)
 
-- 0 bit - unknown
-- 1 bit - unit lbs
-- 2 bit - unit kg
-- 3 bit - unknown
-- 4 bit - jin (chinese catty) unit
-- 5 bit - stabilized
-- 6 bit - unknown
-- 7 bit - weight removed
+Control bytes format (LSB first):
 
-**byte 11-12:**
- - weight (little endian)
-
-## Links
-
- * https://github.com/oliexdev/openScale/wiki/Xiaomi-Bluetooth-Mi-Scale
+* bit 0:   unknown
+* bit 1:   unknown
+* bit 2:   unknown
+* bit 3:   unknown
+* bit 4:   unknown
+* bit 5:   unknown
+* bit 6:   unknown (always 1 on my scale)
+* bit 7:   is pounds
+* bit 8:   is empty load (no weight on scale)
+* bit 9:   is catty
+* bit 10:  is stabilized (weight confirmed, that's also when the weight on scale blinks)
+* bit 11:  unknown
+* bit 12:  unknown
+* bit 13:  unknown (always 1 on my scale)
+* bit 14:  have impedance (impedance bytes are set correctly)
+* bit 15:  unknown
