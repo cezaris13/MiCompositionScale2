@@ -1,7 +1,7 @@
 from bluepy.btle import Scanner, DefaultDelegate
 
 from logger import log
-from scaleMetrics import getFatPercentage, processPacket
+from scaleMetrics import processPacket
 
 
 class ScanDelegate(DefaultDelegate):
@@ -31,8 +31,7 @@ class ScanDelegate(DefaultDelegate):
                 self.last_raw_data = rawData
                 weight, unit, hasImpedance, impedance, isStabilized, isWeightRemoved, dateTime = processPacket(rawData)
                 if isStabilized is True and isWeightRemoved is False:
-                    print("weight:", weight, unit)
-                    self.callback(weight, unit)
+                    self.callback(weight, unit, hasImpedance, impedance, dateTime)
 
 
 def start(mac_address, timeout, callback):

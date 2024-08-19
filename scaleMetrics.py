@@ -1,5 +1,7 @@
 from datetime import *
 
+from fitbitData import getAge, getGender, getHeight
+
 def processPacket(rawData):
     isLbs = bool(rawData[0] & 1)
     hasImpedance = bool(rawData[1] & (1 << 1))
@@ -77,13 +79,3 @@ def checkValueOverflow(value, minimum, maximum):
         return maximum
     else:
         return value
-
-
-def getGender():
-    return "male" ## use fitbit api
-
-def getAge():
-    return 23  ## use fitbit api
-
-def getHeight():
-    return 184 ## use fitbit api
