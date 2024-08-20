@@ -1,22 +1,67 @@
-# https://dev.fitbit.com/build/reference/web-api/user/get-profile/
-# for get user gender, height, age, and last weight
+import requests
+import base64
+import json
 
-def getGender():
-    return "male" ## use fitbit api
+def getUserData(config):
+    accessToken = config.get("ACCESS_TOKEN")
+    if isAccessCodeExpired(accessToken):
+        refreshAccessToken(config)
 
-def getAge():
-    return 23  ## use fitbit api
+    header = {'Authorization' : 'Bearer {}'.format(accessToken)}
+    response = requests.get("https://api.fitbit.com/1/user/-/profile.json", headers=header)
+    responseData = response.json()
+    user = responseData['user']
+    age = user['age']
+    gender = user['gender']
+    height = user['height']
+    weight = user['weight']
+    timeZone = user['timezone']
+    return gender, age, height, weight, timeZone
 
-def getHeight():
-    return 184 ## use fitbit api
+def refreshAccessToken(config):
+    refreshToken = config.get("REFRESH_TOKEN")
+    clientId = config.get("CLIENT_ID")
+    clientSecret = config.get("CLIENT_SECRET")
+    encodedClientData = base64.b64encode((clientId+":"+clientSecret).encode())
+    header = {'Authorization' : 'Basic {}'.format(encodedClientData.decode()),
+              'Content-Type':'application/x-www-form-urlencoded'}
+    params = {'refresh_token': '{}'.format(refreshToken),
+              'grant_type' : 'refresh_token'}
+    response = requests.post("https://api.fitbit.com/oauth2/token", headers=header, params=params)
 
-def getLastWeight():
-    return 85 ## use fitbit api
+    print(response.status_code)
+    print(response.json())
+    accessToken = response.json()['access_token']
+    refreshToken = response.json()['refresh_token']
+    config.__setattr__("ACCESS_TOKEN", accessToken)
+    config.__setattr__("REFRESH_TOKEN", refreshToken)
 
-#https://dev.fitbit.com/build/reference/web-api/body/create-bodyfat-log/
-def updateBodyFat(bodyFat, dateTime):
-    return
+def updateBodyFat(config, bodyFat, dateTime):
+    accessToken = config.get("ACCESS_TOKEN")
+    if isAccessCodeExpired(accessToken):
+        refreshAccessToken(config)
 
-#https://dev.fitbit.com/build/reference/web-api/body/create-weight-log/
-def updateBodyWeight(weight, dateTime):
-    return
+    header = {'Authorization' : 'Bearer {}'.format(accessToken)}
+    params = {'fat': bodyFat,
+              'date' : dateTime.strftime("%Y-%m-%d"),
+              'time': dateTime.strftime("%H:%M:%S")}
+    print(params)
+    response = requests.post("https://api.fitbit.com/1/user/-/body/log/fat.json", headers=header, params=params)
+    return response.status_code
+
+def updateBodyWeight(config, weight, dateTime):
+    accessToken = config.get("ACCESS_TOKEN")
+    if isAccessCodeExpired(accessToken):
+        refreshAccessToken(config)
+
+    header = {'Authorization' : 'Bearer {}'.format(accessToken)}
+    params = {'weight': weight,
+              'date' : dateTime.strftime("%Y-%m-%d"),
+              'time': dateTime.strftime("%H:%M:%S")}
+    print(params)
+    response = requests.post("https://api.fitbit.com/1/user/-/body/log/weight.json", headers=header, params=params)
+    return response.status_code
+
+
+def isAccessCodeExpired(accessCode): # work on this
+    return False

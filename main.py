@@ -7,10 +7,10 @@ import os
 from dotenv import dotenv_values
 
 from logger import log, basicConfig
-from fitbitData import getLastWeight, updateBodyFat, updateBodyWeight
+from fitbitData import updateBodyFat, updateBodyWeight, getUserData, refreshAccessToken
 from scaleMetrics import getFatPercentage
 from scanner import start
-
+from utils import unitToKg, datetimeToTimezone
 
 def main():
     config = dotenv_values(os.path.dirname(__file__) + "/.env")
@@ -22,22 +22,23 @@ def main():
     if args.logLevel:
         basicConfig(level=getattr(logging, args.logLevel))
 
-    def callback(weight, unit, hasImpedance, impedance, dateTime):
-        log.info("received data = %s %s", weight, unit)
-        lastWeight = getLastWeight()
+    def callback(weight, unit, hasImpedance, impedance, datetime):
+        log.info("received data = %s %s, %s %s", weight, unit, hasImpedance, impedance)
+        sex, age, height, lastWeight, timezone = getUserData(config) # seems that weight and height data is saved in metric so no conversion needed
+        weight = unitToKg(weight, unit)
+        datetime = datetimeToTimezone(datetime, timezone)
 
         # https://www.healthline.com/health/weight-fluctuation
         # If someone finds more reliable source, create an issue.
         if lastWeight - 3 < weight < lastWeight + 3:
             if hasImpedance:
-                updateBodyFat(getFatPercentage(impedance, weight), dateTime)
-            updateBodyWeight(weight, dateTime)
+                updateBodyFat(config, getFatPercentage(impedance, weight, sex, age, height), datetime)
+            updateBodyWeight(config, weight, datetime)
         else:
             log.warning("weight is not between %s and %s, skip publishing", config.get("MIN_WEIGHT"),
                         config.get("MAX_WEIGHT"))
 
     start(config.get("MAC_ADDRESS"), float(config.get("TIMEOUT")), callback)
-
 
 if __name__ == "__main__":
     main()

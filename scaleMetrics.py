@@ -1,7 +1,5 @@
 from datetime import *
 
-from fitbitData import getAge, getGender, getHeight
-
 def processPacket(rawData):
     isLbs = bool(rawData[0] & 1)
     hasImpedance = bool(rawData[1] & (1 << 1))
@@ -16,8 +14,7 @@ def processPacket(rawData):
     hour = rawData[6] # time is in GMT+0
     minutes = rawData[7]
     seconds = rawData[8]
-    timeZone = datetime.now(timezone.utc).astimezone().tzinfo
-    dateTime = datetime(year, month, day, hour, minutes, seconds, tzinfo=timeZone)
+    dateTime = datetime(year, month, day, hour, minutes, seconds)
     if isJin:
         unit = "jin"
     elif isLbs:
@@ -28,10 +25,8 @@ def processPacket(rawData):
 
     return weight, unit, hasImpedance, impedance, isStabilized, isWeightRemoved, dateTime
 
-def getFatPercentage(impedance, weight):
-    sex = getGender()
-    age = getAge()
-    height = getHeight()
+def getFatPercentage(impedance, weight, sex, age, height):
+    sex = sex.lower()
     # Set a constant to remove from LBM
     if sex == 'female' and age <= 49:
         const = 9.25
