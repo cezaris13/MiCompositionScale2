@@ -1,10 +1,14 @@
 import requests
 import base64
-import json
+import dotenv
+import os
+import jwt
+
+from datetime import datetime
 
 def getUserData(config):
     accessToken = config.get("ACCESS_TOKEN")
-    if isAccessCodeExpired(accessToken):
+    if isAccessTokenExpired(accessToken):
         refreshAccessToken(config)
 
     header = {'Authorization' : 'Bearer {}'.format(accessToken)}
@@ -35,10 +39,12 @@ def refreshAccessToken(config):
     refreshToken = response.json()['refresh_token']
     config.__setattr__("ACCESS_TOKEN", accessToken)
     config.__setattr__("REFRESH_TOKEN", refreshToken)
+    dotenv.set_key(os.path.dirname(__file__) + "/.env", "ACCESS_TOKEN", config.get("ACCESS_TOKEN"))
+    dotenv.set_key(os.path.dirname(__file__) + "/.env", "REFRESH_TOKEN", config.get("REFRESH_TOKEN"))
 
 def updateBodyFat(config, bodyFat, dateTime):
     accessToken = config.get("ACCESS_TOKEN")
-    if isAccessCodeExpired(accessToken):
+    if isAccessTokenExpired(accessToken):
         refreshAccessToken(config)
 
     header = {'Authorization' : 'Bearer {}'.format(accessToken)}
@@ -51,17 +57,43 @@ def updateBodyFat(config, bodyFat, dateTime):
 
 def updateBodyWeight(config, weight, dateTime):
     accessToken = config.get("ACCESS_TOKEN")
-    if isAccessCodeExpired(accessToken):
+    if isAccessTokenExpired(accessToken):
         refreshAccessToken(config)
 
     header = {'Authorization' : 'Bearer {}'.format(accessToken)}
     params = {'weight': weight,
               'date' : dateTime.strftime("%Y-%m-%d"),
               'time': dateTime.strftime("%H:%M:%S")}
-    print(params)
     response = requests.post("https://api.fitbit.com/1/user/-/body/log/weight.json", headers=header, params=params)
     return response.status_code
 
+def isAccessTokenExpired(accessToken):
+    decodedToken = jwt.decode(accessToken, options={"verify_signature": False})
+    expirationTime = decodedToken['exp']
+    expirationDate = datetime.fromtimestamp(expirationTime)
+    return expirationDate < datetime.now()
 
-def isAccessCodeExpired(accessCode): # work on this
-    return False
+def getAccessToken(config):
+    access_code = config.get("ACCESS_CODE")
+    automateTokenRetrieval(config, access_code)
+
+
+def automateTokenRetrieval(config, code: str):
+    data = {
+        "grant_type": "authorization_code",
+        "redirect_uri": "http://127.0.0.1:8080/",
+        "code": code
+    }
+    basic_token = base64.b64encode(
+        f"{config.get('CLIENT_ID')}:{config.get('CLIENT_SECRET')}".encode("utf-8")
+    ).decode("utf-8")
+    headers = {
+        "Content-Type": "application/x-www-form-urlencoded",
+        "Authorization": f"Basic {basic_token}"
+    }
+    response = requests.post(params=data, headers=headers,
+                             url="https://api.fitbit.com/oauth2/token")
+    keys = response.json()
+    print(keys)
+    dotenv.set_key(os.path.dirname(__file__) + "/.env", "ACCESS_TOKEN", keys["access_token"])
+    dotenv.set_key(os.path.dirname(__file__) + "/.env", "REFRESH_TOKEN", keys["refresh_token"])

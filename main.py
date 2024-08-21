@@ -7,7 +7,7 @@ import os
 from dotenv import dotenv_values
 
 from logger import log, basicConfig
-from fitbitData import updateBodyFat, updateBodyWeight, getUserData, refreshAccessToken
+from fitbitData import updateBodyFat, updateBodyWeight, getUserData, getAccessToken
 from scaleMetrics import getFatPercentage
 from scanner import start
 from utils import unitToKg, datetimeToTimezone
@@ -21,6 +21,9 @@ def main():
     args = parser.parse_args()
     if args.logLevel:
         basicConfig(level=getattr(logging, args.logLevel))
+
+    if config.get("ACCESS_TOKEN") == "" or config.get("REFRESH_TOKEN") == "":
+        getAccessToken(config)
 
     def callback(weight, unit, hasImpedance, impedance, datetime):
         log.info("received data = %s %s, %s %s", weight, unit, hasImpedance, impedance)
