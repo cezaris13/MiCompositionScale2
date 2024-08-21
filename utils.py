@@ -1,4 +1,5 @@
 from pytz import timezone
+from datetime import timedelta
 
 def unitToKg(value, unit):
     if unit == 'jin':
@@ -8,8 +9,7 @@ def unitToKg(value, unit):
     return value
 
 def datetimeToTimezone(dateTime, timezoneString):
-    converted_tz = timezone(timezoneString)
-    print(converted_tz)
-
-
-    return dateTime.astimezone(timezone(timezoneString))
+    convertedTimezone = timezone(timezoneString)
+    local_time = dateTime.astimezone(convertedTimezone)
+    timeDifference = local_time.utcoffset().total_seconds() / 3600
+    return dateTime + timedelta(hours=timeDifference)
