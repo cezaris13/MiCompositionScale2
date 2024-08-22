@@ -4,7 +4,6 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-btleplug = "0.11.5"
-dotenv = "0.15.0"
-jsonwebtoken = "9.3.0"
-reqwest = "0.12.7"
+bytes = "1.7.1"
+datetime = "0.5.2"
+

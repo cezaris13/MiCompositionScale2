@@ -1,7 +1,48 @@
+use crate::utils::MassUnit;
+
+use bytes::Bytes;
+use datetime::{LocalDate, LocalDateTime};
+
 #[derive(PartialEq, Eq)]
 pub enum Gender {
     Male,
     Female,
+}
+
+pub struct PacketData {
+    weight: f32,
+    unit: MassUnit,
+    has_impedance: bool,
+    impedance: f32,
+    is_stabilized: bool,
+    is_weight_removed: bool,
+    datetime: LocalDateTime,
+}
+
+pub fn process_packet(raw_data: Bytes) -> PacketData {
+    let mut weight: f32 = 12.0;
+    let is_jin: bool = true;
+    let is_lbs: bool = false;
+
+    let unit: MassUnit;
+    if is_jin {
+        unit = MassUnit::Jin;
+    } else if is_lbs {
+        unit = MassUnit::Lbs;
+    } else {
+        unit = MassUnit::Kg;
+        weight /= 2.0;
+    }
+
+    PacketData {
+        weight,
+        unit,
+        has_impedance: true,
+        impedance: 430.0,
+        is_stabilized: true,
+        is_weight_removed: false,
+        datetime: todo!(),
+    }
 }
 
 pub fn get_fat_percentage(
