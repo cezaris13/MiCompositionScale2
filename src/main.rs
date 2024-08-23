@@ -1,7 +1,6 @@
 extern crate dotenv_codegen;
 
 use std::env;
-
 use datetime::LocalDateTime;
 use dotenv::dotenv;
 use dotenv_codegen::dotenv;
@@ -13,6 +12,7 @@ mod fitbit_data;
 mod scale_metrics;
 mod utils;
 
+// #[tokio::main]
 fn main() {
     println!(
         "{}",
@@ -36,9 +36,8 @@ fn main() {
         // }
     }
     println!("{}", dotenv!("ACCESS_TOKEN"));
-    println!("{}",get_user_data().unwrap_or_else(|error| {
-        panic!("{}", error)
-    }).age);
+    let user_data = get_user_data();
+    println!("{:?}",user_data);
 }
 
 fn callback(

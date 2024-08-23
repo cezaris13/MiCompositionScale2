@@ -2,11 +2,24 @@ use crate::utils::MassUnit;
 
 use bytes::Bytes;
 use datetime::{LocalDate, LocalDateTime};
+use std::str::FromStr;
 
-#[derive(PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum Gender {
     Male,
     Female,
+}
+
+impl FromStr for Gender {
+    type Err = ();
+
+    fn from_str(input: &str) -> Result<Gender, Self::Err> {
+        match input {
+            "MALE"  => Ok(Gender::Male),
+            "FEMALE"  => Ok(Gender::Female),
+            _      => Err(()),
+        }
+    }
 }
 
 pub struct PacketData {
