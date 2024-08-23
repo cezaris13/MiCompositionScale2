@@ -1,7 +1,7 @@
 use datetime::LocalDateTime;
 
 use crate::scale_metrics::Gender;
-use std::string::String;
+use std::{env::{self, VarError}, string::String};
 
 pub struct UserData {
     pub gender: Gender,
@@ -16,8 +16,22 @@ struct Token {
     refresh_token: String,
 }
 
-pub fn get_user_data() -> UserData {
-    todo!()
+pub fn get_user_data() -> Result<UserData, String> {
+    let access_token: Result<String, VarError> = env::var("ACCESS_TOKEN");
+
+    if access_token.is_err() || access_token.unwrap().is_empty() {
+        return Err(String::from("AccessToken is empty"));
+    }
+
+    // let response = reqwest::get("https://api.fitbit.com/1/user/-/profile.json");
+
+    Ok(UserData {
+        gender: Gender::Male,
+        age: 23,
+        height: 184.0,
+        weight: 84.0,
+        time_zone: String::from("Europe/Vilnius")
+    })
 }
 
 fn refresh_access_token() {}

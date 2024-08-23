@@ -1,4 +1,10 @@
+extern crate dotenv_codegen;
+
+use std::env;
+
 use datetime::LocalDateTime;
+use dotenv::dotenv;
+use dotenv_codegen::dotenv;
 use fitbit_data::{get_user_data, update_body_fat, update_body_weight, UserData};
 use scale_metrics::get_fat_percentage;
 use utils::{unit_to_kg, MassUnit};
@@ -18,6 +24,21 @@ fn main() {
             184 as f32
         )
     );
+
+    dotenv().ok();
+
+    for (key, value) in env::vars() {
+        println!("{}: {}", key, value);
+        // if key == "ACCESS_TOKEN" {
+        //     unsafe {
+        //         env::set_var(key, "123");
+        //     }
+        // }
+    }
+    println!("{}", dotenv!("ACCESS_TOKEN"));
+    println!("{}",get_user_data().unwrap_or_else(|error| {
+        panic!("{}", error)
+    }).age);
 }
 
 fn callback(
@@ -29,7 +50,11 @@ fn callback(
 ) {
     // log info
     let weight_in_kg = unit_to_kg(weight, unit);
-    let user_data: UserData = get_user_data();
+    let user_data_response: Result<UserData, String> = get_user_data();
+
+    let user_data: UserData = user_data_response.unwrap_or_else(|error| {
+        panic!("{}", error)
+    });
 
     if user_data.weight - 3.0 < weight_in_kg && weight_in_kg < user_data.weight + 3.0 {
         if has_impedance {
