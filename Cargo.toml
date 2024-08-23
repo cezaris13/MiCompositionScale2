@@ -4,8 +4,9 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+base64 = "0.22.1"
 bytes = "1.7.1"
-datetime = "0.5.2"
+chrono = "0.4.38"
 dotenv = "0.15.0"
 dotenv_codegen = "0.15.0"
 json = "0.12.4"

@@ -1,10 +1,10 @@
 extern crate dotenv_codegen;
 
 use std::env;
-use datetime::LocalDateTime;
+use chrono::{DateTime, Utc};
 use dotenv::dotenv;
 use dotenv_codegen::dotenv;
-use fitbit_data::{get_user_data, update_body_fat, update_body_weight, UserData};
+use fitbit_data::{get_user_data, refresh_access_token, update_body_fat, update_body_weight, UserData};
 use scale_metrics::get_fat_percentage;
 use utils::{unit_to_kg, MassUnit};
 
@@ -38,6 +38,8 @@ fn main() {
     println!("{}", dotenv!("ACCESS_TOKEN"));
     let user_data = get_user_data();
     println!("{:?}",user_data);
+    let response = refresh_access_token();
+    println!("{:?}", response);
 }
 
 fn callback(
@@ -45,7 +47,7 @@ fn callback(
     unit: MassUnit,
     has_impedance: bool,
     impedance: f32,
-    datetime: LocalDateTime,
+    datetime: DateTime<Utc>,
 ) {
     // log info
     let weight_in_kg = unit_to_kg(weight, unit);

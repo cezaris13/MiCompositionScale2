@@ -1,7 +1,7 @@
 use crate::utils::MassUnit;
 
 use bytes::Bytes;
-use datetime::{LocalDate, LocalDateTime};
+use chrono::{DateTime, Utc};
 use std::str::FromStr;
 
 #[derive(Debug, PartialEq, Eq)]
@@ -29,7 +29,7 @@ pub struct PacketData {
     impedance: f32,
     is_stabilized: bool,
     is_weight_removed: bool,
-    datetime: LocalDateTime,
+    datetime: DateTime<Utc>,
 }
 
 pub fn process_packet(raw_data: Bytes) -> PacketData {
