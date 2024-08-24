@@ -10,14 +10,11 @@ sudo make install
 
 ## Usage
 
-always run with `sudo` or from `root`:
-
 ```bash
 cp .env.dist .env
 vim .env
-sudo make run
-# sudo ./main.py --help
-# sudo make debug
+make run
+# make debug
 ```
 
 ## Autostart
