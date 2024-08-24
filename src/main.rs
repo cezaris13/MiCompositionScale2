@@ -6,7 +6,9 @@ mod scale_metrics;
 mod utils;
 
 use data_types::{PacketData, UserData};
-use fitbit_data::{get_user_data, update_body_fat, update_body_weight};
+use fitbit_data::{
+    get_user_data, retrieve_access_token, retrieve_env_variable, save_token_to_env, update_body_fat, update_body_weight
+};
 use scale_metrics::{get_fat_percentage, process_packet};
 use utils::unit_to_kg;
 
@@ -22,6 +24,16 @@ async fn get_central(manager: &Manager) -> Adapter {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
+    match check_if_tokens_exist() {
+        Ok(_) => {}
+        Err(_) => match retrieve_access_token() {
+            Ok(token) => save_token_to_env(&token),
+            Err(err) => {
+                println!("{}", err);
+            }
+        },
+    };
+
     let manager = Manager::new().await?;
     let central = get_central(&manager).await;
 
@@ -48,6 +60,12 @@ async fn main() -> Result<(), Box<dyn Error>> {
             _ => {}
         }
     }
+    Ok(())
+}
+
+fn check_if_tokens_exist() -> Result<(), String> {
+    retrieve_env_variable("ACCESS_TOKEN")?;
+    retrieve_env_variable("REFRESH_TOKEN")?;
     Ok(())
 }
 

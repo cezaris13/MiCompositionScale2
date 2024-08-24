@@ -63,12 +63,14 @@ fn refresh_access_token() -> Result<String, String> {
 
     let response_body: String = get_response_body(response)?;
     let token_data: Token = from_str(response_body.as_str()).unwrap();
-    println!("{:?}", token_data);
+    save_token_to_env(&token_data);
 
-    // // add writing to .env
     Ok(token_data.access_token)
 }
 
+pub fn save_token_to_env(_token: &Token) {
+
+}
 fn is_access_token_expired(access_token: &String) -> bool {
     let TokenSlices { claims, .. } =
         raw::split_token(access_token).expect("Error Slicing the token");
@@ -165,7 +167,7 @@ pub fn update_body_weight(body_weight: f32, datetime: DateTime<Utc>) -> Result<R
     handle_http_request(response)
 }
 
-fn retrieve_env_variable(key: &str) -> Result<String, String> {
+pub fn retrieve_env_variable(key: &str) -> Result<String, String> {
     match env::var(key) {
         Ok(response) => match response.as_ref() {
             "" => Err(format!("{} is empty", key)),
