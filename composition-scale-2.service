@@ -8,7 +8,7 @@ Type = simple
 Restart = always
 RestartSec = 5
 User = root
-ExecStart = /$HOME/scripts/compositionScale/main.py
+ExecStart = /home/pijus/Scripts/MiCompositionScale2/target/debug/MiCompositionScale2
 
 [Install]
 WantedBy = multi-user.target

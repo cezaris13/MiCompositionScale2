@@ -1,8 +1,2 @@
-__pycache__/
-.idea/
 .env
-.venv/
-
-# Added by cargo
-
 /target
