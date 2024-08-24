@@ -1,14 +1,14 @@
 extern crate dotenv_codegen;
 
-use fitbit_data::{
-    get_user_data, update_body_fat, update_body_weight, UserData,
-};
-use scale_metrics::{get_fat_percentage, process_packet, PacketData};
-use utils::unit_to_kg;
-
+mod data_types;
 mod fitbit_data;
 mod scale_metrics;
 mod utils;
+
+use data_types::{PacketData, UserData};
+use fitbit_data::{get_user_data, update_body_fat, update_body_weight};
+use scale_metrics::{get_fat_percentage, process_packet};
+use utils::unit_to_kg;
 
 use btleplug::api::{Central, CentralEvent, Manager as _, ScanFilter};
 use btleplug::platform::{Adapter, Manager};
@@ -22,7 +22,6 @@ async fn get_central(manager: &Manager) -> Adapter {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
-
     let manager = Manager::new().await?;
     let central = get_central(&manager).await;
 
@@ -32,7 +31,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     while let Some(event) = events.next().await {
         match event {
-            CentralEvent::ServiceDataAdvertisement { service_data, .. } => { // add here mac address check
+            CentralEvent::ServiceDataAdvertisement { service_data, .. } => {
+                // add here mac address check
                 let search_str = "181b";
                 for (uuid, data) in &service_data {
                     if uuid.to_string().contains(search_str) {
@@ -57,8 +57,8 @@ fn callback(processed_packet: PacketData) {
         Ok(response) => response,
         Err(error) => {
             println!("{}", error);
-            return
-        },
+            return;
+        }
     };
 
     if user_data.weight - 3.0 < weight_in_kg && weight_in_kg < user_data.weight + 3.0 {

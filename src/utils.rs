@@ -1,9 +1,4 @@
-#[derive(Debug)]
-pub enum MassUnit {
-    Kg,
-    Lbs,
-    Jin,
-}
+use crate::data_types::MassUnit;
 
 pub fn unit_to_kg(value: f32, unit: MassUnit) -> f32 {
     match unit {

@@ -1,26 +1,6 @@
-use crate::utils::MassUnit;
+use crate::data_types::{Gender, MassUnit, PacketData};
 
 use chrono::{DateTime, TimeZone, Utc};
-use serde::{Deserialize, Serialize};
-
-#[derive(Debug, PartialEq, Eq, Deserialize, Serialize)]
-pub enum Gender {
-    #[serde(rename = "MALE")]
-    Male,
-    #[serde(rename = "FEMALE")]
-    Female,
-}
-
-#[derive(Debug)]
-pub struct PacketData {
-    pub weight: f32,
-    pub unit: MassUnit,
-    pub has_impedance: bool,
-    pub impedance: u16,
-    pub is_stabilized: bool,
-    pub is_weight_removed: bool,
-    pub datetime: DateTime<Utc>,
-}
 
 pub fn process_packet(raw_data: &Vec<u8>) -> PacketData {
     let is_lbs: bool = (raw_data[0] & 1) != 0;

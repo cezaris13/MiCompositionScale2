@@ -1,10 +1,12 @@
+use crate::data_types::{Payload, Token, User, UserData};
+
 use base64::{prelude::BASE64_STANDARD, Engine};
 use chrono::{DateTime, Utc};
 use reqwest::{
     blocking::Response,
-    header::{AUTHORIZATION, CONTENT_TYPE}, Error, StatusCode,
+    header::{AUTHORIZATION, CONTENT_TYPE},
+    Error, StatusCode,
 };
-use serde::{Deserialize, Serialize};
 use serde_json::{from_str, from_value};
 
 use jsonwebtokens::raw::{self, decode_json_token_slice, TokenSlices};
@@ -15,34 +17,6 @@ use std::{
     env::{self},
     string::String,
 };
-
-use crate::scale_metrics::Gender;
-
-#[derive(Serialize, Deserialize, Debug)]
-struct User {
-    user: UserData,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct UserData {
-    pub gender: Gender,
-    pub age: i8,
-    pub height: f32,
-    pub weight: f32,
-    #[serde(rename = "timezone")]
-    pub time_zone: String,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct Token {
-    pub access_token: String,
-    pub refresh_token: String,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-struct Payload {
-    exp: u64,
-}
 
 // change to async in future
 pub fn get_user_data() -> Result<UserData, String> {
@@ -140,7 +114,7 @@ pub fn update_body_fat(body_fat: f32, datetime: DateTime<Utc>) -> Result<Respons
     let mut access_token = retrieve_env_variable("ACCESS_TOKEN")?;
 
     if is_access_token_expired(&access_token) {
-        access_token =  refresh_access_token()?;
+        access_token = refresh_access_token()?;
     }
 
     let params = [
@@ -205,12 +179,10 @@ fn handle_http_request(response: Result<Response, Error>) -> Result<Response, St
     match response {
         Ok(resp) => match resp.status() {
             StatusCode::OK => Ok(resp),
-            status_code => {
-                Err(String::from(format!(
-                    "failed to get data from the request: status code {}",
-                    status_code
-                )))
-            }
+            status_code => Err(String::from(format!(
+                "failed to get data from the request: status code {}",
+                status_code
+            ))),
         },
         Err(err) => Err(err.to_string()),
     }
