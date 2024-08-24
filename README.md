@@ -3,6 +3,9 @@ Get Xiaomi Mi Composition Scale 2 weight and publishing to fitbit
 ## Requirements
 
  * cargo
+ * pkg-config (for linux)
+ * libssl-dev (for linux)
+ * libdbus-1-dev (for linux)
 
 ```bash
 sudo make install

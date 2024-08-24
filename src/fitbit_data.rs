@@ -188,6 +188,7 @@ fn handle_http_request(response: Result<Response, Error>) -> Result<Response, St
     match response {
         Ok(resp) => match resp.status() {
             StatusCode::OK => Ok(resp),
+            StatusCode::CREATED => Ok(resp),
             status_code => Err(String::from(format!(
                 "failed to get data from the request: status code {}",
                 status_code
