@@ -2,7 +2,7 @@ use base64::{prelude::BASE64_STANDARD, Engine};
 use chrono::{DateTime, Utc};
 use reqwest::{
     blocking::Response,
-    header::{AUTHORIZATION, CONTENT_TYPE},
+    header::{AUTHORIZATION, CONTENT_TYPE}, Error, StatusCode,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::{from_str, from_value};
@@ -46,19 +46,10 @@ struct Payload {
 
 // change to async in future
 pub fn get_user_data() -> Result<UserData, String> {
-    let mut access_token = match env::var("ACCESS_TOKEN") {
-        Ok(response) => match response.as_ref() {
-            "" => return Err(String::from("ACCESS_TOKEN is empty")),
-            _ => response,
-        },
-        Err(error) => return Err(error.to_string()),
-    };
+    let mut access_token = retrieve_env_variable("ACCESS_TOKEN")?;
 
     if is_access_token_expired(&access_token) {
-        access_token = match refresh_access_token() {
-            Ok(token) => token,
-            Err(err) => return Err(err),
-        }
+        access_token = refresh_access_token()?;
     }
 
     let client = reqwest::blocking::Client::new();
@@ -67,52 +58,17 @@ pub fn get_user_data() -> Result<UserData, String> {
         .header(AUTHORIZATION, format!("Bearer {}", access_token))
         .send();
 
-    let response_unwrapped = match response {
-        Ok(resp) => match resp.status().as_u16() {
-            200 => resp, // change to status code?
-            status_code => {
-                return Err(String::from(format!(
-                    "failed to get data from the request: status code {}",
-                    status_code
-                )))
-            }
-        },
-        Err(err) => return Err(err.to_string()),
-    };
+    let response = handle_http_request(response)?;
 
-    let unwrapped_response_text: String = match response_unwrapped.text() {
-        Ok(text) => text,
-        Err(_) => return Err(String::from("Failed to retrieve response message")),
-    };
-
-    let user_data: User = from_str(unwrapped_response_text.as_str()).unwrap();
+    let response_body: String = get_response_body(response)?;
+    let user_data: User = from_str(response_body.as_str()).unwrap();
     Ok(user_data.user)
 }
 
 fn refresh_access_token() -> Result<String, String> {
-    let refresh_token = match env::var("REFRESH_TOKEN") {
-        Ok(response) => match response.as_ref() {
-            "" => return Err(String::from("REFRRESH_TOKEN is empty")),
-            _ => response,
-        },
-        Err(error) => return Err(error.to_string()),
-    };
-
-    let client_id = match env::var("CLIENT_ID") {
-        Ok(response) => match response.as_ref() {
-            "" => return Err(String::from("CLIENT_ID is empty")),
-            _ => response,
-        },
-        Err(error) => return Err(error.to_string()),
-    };
-
-    let client_secret = match env::var("CLIENT_SECRET") {
-        Ok(response) => match response.as_ref() {
-            "" => return Err(String::from("CLIENT_SECRET is empty")),
-            _ => response,
-        },
-        Err(error) => return Err(error.to_string()),
-    };
+    let refresh_token = retrieve_env_variable("REFRESH_TOKEN")?;
+    let client_id = retrieve_env_variable("CLIENT_ID")?;
+    let client_secret = retrieve_env_variable("CLIENT_SECRET")?;
 
     let encoded_client_data = BASE64_STANDARD.encode(client_id + ":" + &client_secret);
     let params = [
@@ -129,29 +85,14 @@ fn refresh_access_token() -> Result<String, String> {
         .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
         .send();
 
-    let response_unwrapped = match response {
-        Ok(resp) => match resp.status().as_u16() {
-            200 => resp, // change to status code?
-            status_code => {
-                return Err(String::from(format!(
-                    "failed to get data from the request: status code {}",
-                    status_code
-                )))
-            }
-        },
-        Err(err) => return Err(err.to_string()),
-    };
+    let response = handle_http_request(response)?;
 
-    let unwrapped_response_text: String = match response_unwrapped.text() {
-        Ok(text) => text,
-        Err(_) => return Err(String::from("Failed to retrieve response message")),
-    };
-
-    let response: Token = from_str(unwrapped_response_text.as_str()).unwrap();
-    println!("{:?}", response);
+    let response_body: String = get_response_body(response)?;
+    let token_data: Token = from_str(response_body.as_str()).unwrap();
+    println!("{:?}", token_data);
 
     // // add writing to .env
-    Ok(response.access_token)
+    Ok(token_data.access_token)
 }
 
 fn is_access_token_expired(access_token: &String) -> bool {
@@ -168,29 +109,9 @@ fn is_access_token_expired(access_token: &String) -> bool {
 }
 
 pub fn retrieve_access_token() -> Result<Token, String> {
-    let access_code = match env::var("ACCESS_CODE") {
-        Ok(response) => match response.as_ref() {
-            "" => return Err(String::from("ACCESS_CODE is empty")),
-            _ => response,
-        },
-        Err(error) => return Err(error.to_string()),
-    };
-
-    let client_id = match env::var("CLIENT_ID") {
-        Ok(response) => match response.as_ref() {
-            "" => return Err(String::from("CLIENT_ID is empty")),
-            _ => response,
-        },
-        Err(error) => return Err(error.to_string()),
-    };
-
-    let client_secret = match env::var("CLIENT_SECRET") {
-        Ok(response) => match response.as_ref() {
-            "" => return Err(String::from("CLIENT_SECRET is empty")),
-            _ => response,
-        },
-        Err(error) => return Err(error.to_string()),
-    };
+    let access_code = retrieve_env_variable("ACCESS_CODE")?;
+    let client_id = retrieve_env_variable("CLIENT_ID")?;
+    let client_secret = retrieve_env_variable("CLIENT_SECRET")?;
 
     let encoded_client_data = BASE64_STANDARD.encode(client_id + ":" + &client_secret);
 
@@ -210,40 +131,16 @@ pub fn retrieve_access_token() -> Result<Token, String> {
         .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
         .send();
 
-    let response_unwrapped = match response {
-        Ok(resp) => match resp.status().as_u16() {
-            200 => resp,
-            status_code => {
-                return Err(String::from(format!(
-                    "failed to get data from the request: status code {}",
-                    status_code
-                )))
-            }
-        },
-        Err(err) => return Err(err.to_string()),
-    };
-
-    let unwrapped_response_text: String = match response_unwrapped.text() {
-        Ok(text) => text,
-        Err(_) => return Err(String::from("Failed to retrieve response message")),
-    };
-    Ok(from_str(&unwrapped_response_text).unwrap())
+    let response = handle_http_request(response)?;
+    let response_body: String = get_response_body(response)?;
+    Ok(from_str(&response_body).unwrap())
 }
 
 pub fn update_body_fat(body_fat: f32, datetime: DateTime<Utc>) -> Result<Response, String> {
-    let mut access_token = match env::var("ACCESS_TOKEN") {
-        Ok(response) => match response.as_ref() {
-            "" => return Err(String::from("AccessToken is empty")),
-            _ => response,
-        },
-        Err(error) => return Err(error.to_string()),
-    };
+    let mut access_token = retrieve_env_variable("ACCESS_TOKEN")?;
 
     if is_access_token_expired(&access_token) {
-        access_token = match refresh_access_token() {
-            Ok(token) => token,
-            Err(err) => return Err(err),
-        }
+        access_token =  refresh_access_token()?;
     }
 
     let params = [
@@ -264,34 +161,14 @@ pub fn update_body_fat(body_fat: f32, datetime: DateTime<Utc>) -> Result<Respons
         .header(AUTHORIZATION, format!("Bearer {}", access_token))
         .send();
 
-    match response {
-        Ok(resp) => match resp.status().as_u16() {
-            200 => Ok(resp), // change to status code?
-            status_code => {
-                return Err(String::from(format!(
-                    "failed to get data from the request: status code {}",
-                    status_code
-                )))
-            }
-        },
-        Err(err) => return Err(err.to_string()),
-    }
+    handle_http_request(response)
 }
 
 pub fn update_body_weight(body_weight: f32, datetime: DateTime<Utc>) -> Result<Response, String> {
-    let mut access_token = match env::var("ACCESS_TOKEN") {
-        Ok(response) => match response.as_ref() {
-            "" => return Err(String::from("AccessToken is empty")),
-            _ => response,
-        },
-        Err(error) => return Err(error.to_string()),
-    };
+    let mut access_token = retrieve_env_variable("ACCESS_TOKEN")?;
 
     if is_access_token_expired(&access_token) {
-        access_token = match refresh_access_token() {
-            Ok(token) => token,
-            Err(err) => return Err(err),
-        }
+        access_token = refresh_access_token()?;
     }
 
     let params = [
@@ -311,16 +188,37 @@ pub fn update_body_weight(body_weight: f32, datetime: DateTime<Utc>) -> Result<R
         .header(AUTHORIZATION, format!("Bearer {}", access_token))
         .send();
 
+    handle_http_request(response)
+}
+
+fn retrieve_env_variable(key: &str) -> Result<String, String> {
+    match env::var(key) {
+        Ok(response) => match response.as_ref() {
+            "" => Err(format!("{} is empty", key)),
+            _ => Ok(response),
+        },
+        Err(_) => Err(format!("Failed to find {}", key)),
+    }
+}
+
+fn handle_http_request(response: Result<Response, Error>) -> Result<Response, String> {
     match response {
-        Ok(resp) => match resp.status().as_u16() {
-            200 => Ok(resp), // change to status code?
+        Ok(resp) => match resp.status() {
+            StatusCode::OK => Ok(resp),
             status_code => {
-                return Err(String::from(format!(
+                Err(String::from(format!(
                     "failed to get data from the request: status code {}",
                     status_code
                 )))
             }
         },
-        Err(err) => return Err(err.to_string()),
+        Err(err) => Err(err.to_string()),
+    }
+}
+
+fn get_response_body(response: Response) -> Result<String, String> {
+    match response.text() {
+        Ok(text) => Ok(text),
+        Err(_) => Err(String::from("Failed to retrieve response body")),
     }
 }

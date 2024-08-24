@@ -32,7 +32,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     while let Some(event) = events.next().await {
         match event {
-            CentralEvent::ServiceDataAdvertisement { service_data, .. } => {
+            CentralEvent::ServiceDataAdvertisement { service_data, .. } => { // add here mac address check
                 let search_str = "181b";
                 for (uuid, data) in &service_data {
                     if uuid.to_string().contains(search_str) {
@@ -53,9 +53,13 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
 fn callback(processed_packet: PacketData) {
     let weight_in_kg = unit_to_kg(processed_packet.weight, processed_packet.unit);
-    let user_data_response: Result<UserData, String> = get_user_data();
-
-    let user_data: UserData = user_data_response.unwrap_or_else(|error| panic!("{}", error));
+    let user_data: UserData = match get_user_data() {
+        Ok(response) => response,
+        Err(error) => {
+            println!("{}", error);
+            return
+        },
+    };
 
     if user_data.weight - 3.0 < weight_in_kg && weight_in_kg < user_data.weight + 3.0 {
         if processed_packet.has_impedance {
