@@ -1,3 +1,4 @@
+extern crate dotenv;
 extern crate dotenv_codegen;
 
 mod data_types;
@@ -7,7 +8,8 @@ mod utils;
 
 use data_types::{PacketData, UserData};
 use fitbit_data::{
-    get_user_data, retrieve_access_token, retrieve_env_variable, save_token_to_env, update_body_fat, update_body_weight
+    get_user_data, retrieve_access_token, retrieve_env_variable, save_token_to_env,
+    update_body_fat, update_body_weight,
 };
 use scale_metrics::{get_fat_percentage, process_packet};
 use utils::unit_to_kg;
@@ -22,11 +24,17 @@ async fn get_central(manager: &Manager) -> Adapter {
     adapters.into_iter().nth(0).unwrap()
 }
 
+use dotenv::dotenv;
+use std::env;
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
+    dotenv().ok();
+    env::set_var("RUST_BACKTRACE", "full");
+
     match check_if_tokens_exist() {
         Ok(_) => {}
-        Err(_) => match retrieve_access_token() {
+        Err(_) => match retrieve_access_token().await {
             Ok(token) => save_token_to_env(&token),
             Err(err) => {
                 println!("{}", err);
@@ -52,7 +60,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
                         let processed_packet: PacketData = process_packet(data);
                         println!("{:?}", processed_packet);
                         if processed_packet.is_stabilized && !processed_packet.is_weight_removed {
-                            callback(processed_packet);
+                            callback(processed_packet).await;
                         }
                     }
                 }
@@ -69,9 +77,9 @@ fn check_if_tokens_exist() -> Result<(), String> {
     Ok(())
 }
 
-fn callback(processed_packet: PacketData) {
+async fn callback(processed_packet: PacketData) {
     let weight_in_kg = unit_to_kg(processed_packet.weight, processed_packet.unit);
-    let user_data: UserData = match get_user_data() {
+    let user_data: UserData = match get_user_data().await {
         Ok(response) => response,
         Err(error) => {
             println!("{}", error);
@@ -88,12 +96,12 @@ fn callback(processed_packet: PacketData) {
                 user_data.age,
                 user_data.height,
             );
-            match update_body_fat(body_fat, processed_packet.datetime) {
+            match update_body_fat(body_fat, processed_packet.datetime).await {
                 Ok(_) => (),
                 Err(err) => println!("{}", err),
             }
         }
-        match update_body_weight(weight_in_kg, processed_packet.datetime) {
+        match update_body_weight(weight_in_kg, processed_packet.datetime).await {
             Ok(_) => (),
             Err(err) => println!("{}", err),
         }

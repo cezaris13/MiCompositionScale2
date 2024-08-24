@@ -3,9 +3,8 @@ use crate::data_types::{Payload, Token, User, UserData};
 use base64::{prelude::BASE64_STANDARD, Engine};
 use chrono::{DateTime, Utc};
 use reqwest::{
-    blocking::Response,
     header::{AUTHORIZATION, CONTENT_TYPE},
-    Error, StatusCode,
+    Error, Response, StatusCode,
 };
 use serde_json::{from_str, from_value};
 
@@ -19,27 +18,28 @@ use std::{
 };
 
 // change to async in future
-pub fn get_user_data() -> Result<UserData, String> {
+pub async fn get_user_data() -> Result<UserData, String> {
     let mut access_token = retrieve_env_variable("ACCESS_TOKEN")?;
 
     if is_access_token_expired(&access_token) {
-        access_token = refresh_access_token()?;
+        access_token = refresh_access_token().await?;
     }
 
-    let client = reqwest::blocking::Client::new();
+    let client = reqwest::Client::new();
     let response = client
         .get("https://api.fitbit.com/1/user/-/profile.json")
         .header(AUTHORIZATION, format!("Bearer {}", access_token))
-        .send();
+        .send()
+        .await;
 
     let response = handle_http_request(response)?;
 
-    let response_body: String = get_response_body(response)?;
+    let response_body: String = get_response_body(response).await?;
     let user_data: User = from_str(response_body.as_str()).unwrap();
     Ok(user_data.user)
 }
 
-fn refresh_access_token() -> Result<String, String> {
+async fn refresh_access_token() -> Result<String, String> {
     let refresh_token = retrieve_env_variable("REFRESH_TOKEN")?;
     let client_id = retrieve_env_variable("CLIENT_ID")?;
     let client_secret = retrieve_env_variable("CLIENT_SECRET")?;
@@ -52,25 +52,24 @@ fn refresh_access_token() -> Result<String, String> {
     let url =
         reqwest::Url::parse_with_params("https://api.fitbit.com/oauth2/token", &params).unwrap();
 
-    let client = reqwest::blocking::Client::new();
+    let client = reqwest::Client::new();
     let response = client
         .post(url)
         .header(AUTHORIZATION, format!("Basic {}", encoded_client_data))
         .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
-        .send();
+        .send()
+        .await;
 
     let response = handle_http_request(response)?;
 
-    let response_body: String = get_response_body(response)?;
+    let response_body: String = get_response_body(response).await?;
     let token_data: Token = from_str(response_body.as_str()).unwrap();
     save_token_to_env(&token_data);
 
     Ok(token_data.access_token)
 }
 
-pub fn save_token_to_env(_token: &Token) {
-
-}
+pub fn save_token_to_env(_token: &Token) {}
 fn is_access_token_expired(access_token: &String) -> bool {
     let TokenSlices { claims, .. } =
         raw::split_token(access_token).expect("Error Slicing the token");
@@ -84,7 +83,7 @@ fn is_access_token_expired(access_token: &String) -> bool {
     current_time_since_unix > final_claim.exp
 }
 
-pub fn retrieve_access_token() -> Result<Token, String> {
+pub async fn retrieve_access_token() -> Result<Token, String> {
     let access_code = retrieve_env_variable("ACCESS_CODE")?;
     let client_id = retrieve_env_variable("CLIENT_ID")?;
     let client_secret = retrieve_env_variable("CLIENT_SECRET")?;
@@ -100,23 +99,24 @@ pub fn retrieve_access_token() -> Result<Token, String> {
     let url =
         reqwest::Url::parse_with_params("https://api.fitbit.com/oauth2/token", &params).unwrap();
 
-    let client = reqwest::blocking::Client::new();
+    let client = reqwest::Client::new();
     let response = client
         .post(url)
         .header(AUTHORIZATION, format!("Basic {}", encoded_client_data))
         .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
-        .send();
+        .send()
+        .await;
 
     let response = handle_http_request(response)?;
-    let response_body: String = get_response_body(response)?;
+    let response_body: String = get_response_body(response).await?;
     Ok(from_str(&response_body).unwrap())
 }
 
-pub fn update_body_fat(body_fat: f32, datetime: DateTime<Utc>) -> Result<Response, String> {
+pub async fn update_body_fat(body_fat: f32, datetime: DateTime<Utc>) -> Result<Response, String> {
     let mut access_token = retrieve_env_variable("ACCESS_TOKEN")?;
 
     if is_access_token_expired(&access_token) {
-        access_token = refresh_access_token()?;
+        access_token = refresh_access_token().await?;
     }
 
     let params = [
@@ -131,20 +131,24 @@ pub fn update_body_fat(body_fat: f32, datetime: DateTime<Utc>) -> Result<Respons
     )
     .unwrap();
 
-    let client = reqwest::blocking::Client::new();
+    let client = reqwest::Client::new();
     let response = client
         .post(url)
         .header(AUTHORIZATION, format!("Bearer {}", access_token))
-        .send();
+        .send()
+        .await;
 
     handle_http_request(response)
 }
 
-pub fn update_body_weight(body_weight: f32, datetime: DateTime<Utc>) -> Result<Response, String> {
+pub async fn update_body_weight(
+    body_weight: f32,
+    datetime: DateTime<Utc>,
+) -> Result<Response, String> {
     let mut access_token = retrieve_env_variable("ACCESS_TOKEN")?;
 
     if is_access_token_expired(&access_token) {
-        access_token = refresh_access_token()?;
+        access_token = refresh_access_token().await?;
     }
 
     let params = [
@@ -158,17 +162,19 @@ pub fn update_body_weight(body_weight: f32, datetime: DateTime<Utc>) -> Result<R
     )
     .unwrap();
 
-    let client = reqwest::blocking::Client::new();
+    let client = reqwest::Client::new();
     let response = client
         .post(url)
         .header(AUTHORIZATION, format!("Bearer {}", access_token))
-        .send();
+        .send()
+        .await;
 
     handle_http_request(response)
 }
 
 pub fn retrieve_env_variable(key: &str) -> Result<String, String> {
-    match env::var(key) {
+    println!("{}", key);
+    match env::var(key.to_string()) {
         Ok(response) => match response.as_ref() {
             "" => Err(format!("{} is empty", key)),
             _ => Ok(response),
@@ -190,8 +196,8 @@ fn handle_http_request(response: Result<Response, Error>) -> Result<Response, St
     }
 }
 
-fn get_response_body(response: Response) -> Result<String, String> {
-    match response.text() {
+async fn get_response_body(response: Response) -> Result<String, String> {
+    match response.text().await {
         Ok(text) => Ok(text),
         Err(_) => Err(String::from("Failed to retrieve response body")),
     }
