@@ -2,24 +2,14 @@ use crate::utils::MassUnit;
 
 use bytes::Bytes;
 use chrono::{DateTime, Utc};
-use std::str::FromStr;
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Deserialize, Serialize)]
 pub enum Gender {
+    #[serde(rename = "MALE")]
     Male,
+    #[serde(rename = "FEMALE")]
     Female,
-}
-
-impl FromStr for Gender {
-    type Err = ();
-
-    fn from_str(input: &str) -> Result<Gender, Self::Err> {
-        match input {
-            "MALE"  => Ok(Gender::Male),
-            "FEMALE"  => Ok(Gender::Female),
-            _      => Err(()),
-        }
-    }
 }
 
 pub struct PacketData {
@@ -95,7 +85,7 @@ pub fn get_fat_percentage(
     check_value_overflow(fat_percentage, 5.0, 75.0)
 }
 
-pub fn get_lbm_coefficient(height: f32, weight: f32, impedance: f32, age: i8) -> f32 {
+fn get_lbm_coefficient(height: f32, weight: f32, impedance: f32, age: i8) -> f32 {
     let mut lbm: f32 = (height * 9.058 / 100.0) * (height / 100.0);
     lbm += weight * 0.32 + 12.226;
     lbm -= impedance * 0.0068;
@@ -103,7 +93,7 @@ pub fn get_lbm_coefficient(height: f32, weight: f32, impedance: f32, age: i8) ->
     lbm
 }
 
-pub fn check_value_overflow(value: f32, minimum: f32, maximum: f32) -> f32 {
+fn check_value_overflow(value: f32, minimum: f32, maximum: f32) -> f32 {
     if value < minimum {
         return minimum;
     } else if value > maximum {

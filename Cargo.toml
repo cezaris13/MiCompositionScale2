@@ -9,7 +9,9 @@ bytes = "1.7.1"
 chrono = "0.4.38"
 dotenv = "0.15.0"
 dotenv_codegen = "0.15.0"
-json = "0.12.4"
+jsonwebtokens = "1.2.0"
 reqwest = { version = "0.12.7", features = ["blocking"] }
+serde = "1.0.209"
+serde_json = "1.0.127"
 tokio = {version = "1.39.3", features = ["full"]}
 

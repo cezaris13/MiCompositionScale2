@@ -1,40 +1,57 @@
-use base64::{alphabet::STANDARD, prelude::BASE64_STANDARD, Engine};
-use chrono::{DateTime, TimeZone, Utc};
-use json::JsonValue;
+use base64::{prelude::BASE64_STANDARD, Engine};
+use chrono::{DateTime, Utc};
 use reqwest::{
     blocking::Response,
     header::{AUTHORIZATION, CONTENT_TYPE},
 };
-use std::str::FromStr;
+use serde::{Deserialize, Serialize};
+use serde_json::{from_str, from_value};
 
-use crate::scale_metrics::Gender;
+use jsonwebtokens::raw::{self, decode_json_token_slice, TokenSlices};
+
+use std::time::{SystemTime, UNIX_EPOCH};
+
 use std::{
     env::{self},
     string::String,
 };
 
-#[derive(Debug)]
+use crate::scale_metrics::Gender;
+
+#[derive(Serialize, Deserialize, Debug)]
+struct User {
+    user: UserData,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
 pub struct UserData {
     pub gender: Gender,
     pub age: i8,
     pub height: f32,
     pub weight: f32,
+    #[serde(rename = "timezone")]
     pub time_zone: String,
 }
 
-struct Token {
-    access_token: String,
-    refresh_token: String,
+#[derive(Serialize, Deserialize, Debug)]
+pub struct Token {
+    pub access_token: String,
+    pub refresh_token: String,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+struct Payload {
+    exp: u64,
 }
 
 // change to async in future
 pub fn get_user_data() -> Result<UserData, String> {
     let mut access_token = match env::var("ACCESS_TOKEN") {
         Ok(response) => match response.as_ref() {
-            "" => return Err(String::from("AccessToken is empty")),
+            "" => return Err(String::from("ACCESS_TOKEN is empty")),
             _ => response,
         },
-        Err(error) => return Err(error.to_string()), // to_string is ineficcient
+        Err(error) => return Err(error.to_string()),
     };
 
     if is_access_token_expired(&access_token) {
@@ -68,22 +85,11 @@ pub fn get_user_data() -> Result<UserData, String> {
         Err(_) => return Err(String::from("Failed to retrieve response message")),
     };
 
-    let response_json = match json::parse(&unwrapped_response_text.to_owned()) {
-        Ok(json) => json,
-        Err(_) => return Err(String::from("failed to parse json")),
-    };
-
-    let user: &JsonValue = &response_json["user"];
-    Ok(UserData {
-        gender: Gender::from_str(&user["gender"].as_str().unwrap()).unwrap(),
-        age: user["age"].as_i8().unwrap(),
-        height: user["height"].as_f32().unwrap(),
-        weight: user["weight"].as_f32().unwrap(),
-        time_zone: String::from(user["timezone"].as_str().unwrap()),
-    })
+    let user_data: User = from_str(unwrapped_response_text.as_str()).unwrap();
+    Ok(user_data.user)
 }
 
-pub fn refresh_access_token() -> Result<String, String> {
+fn refresh_access_token() -> Result<String, String> {
     let refresh_token = match env::var("REFRESH_TOKEN") {
         Ok(response) => match response.as_ref() {
             "" => return Err(String::from("REFRRESH_TOKEN is empty")),
@@ -141,25 +147,27 @@ pub fn refresh_access_token() -> Result<String, String> {
         Err(_) => return Err(String::from("Failed to retrieve response message")),
     };
 
-    let response_json = match json::parse(&unwrapped_response_text.to_owned()) {
-        Ok(json) => json,
-        Err(_) => return Err(String::from("failed to parse json")),
-    };
+    let response: Token = from_str(unwrapped_response_text.as_str()).unwrap();
+    println!("{:?}", response);
 
-    println!("{:?}", response_json["access_token"]);
-    println!("{:?}", response_json["refresh_token"]);
-
-    // add writing to .env
-    Ok(String::from(
-        response_json["access_token"].as_str().unwrap(),
-    ))
+    // // add writing to .env
+    Ok(response.access_token)
 }
 
 fn is_access_token_expired(access_token: &String) -> bool {
-    false
+    let TokenSlices { claims, .. } =
+        raw::split_token(access_token).expect("Error Slicing the token");
+    let raw_claim = decode_json_token_slice(claims).expect("Error getting the claims");
+    let final_claim: Payload = from_value(raw_claim.clone()).unwrap();
+
+    let current_time_since_unix = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("Time went backwards")
+        .as_secs();
+    current_time_since_unix > final_claim.exp
 }
 
-fn retrieve_access_token() -> Result<Token, String> {
+pub fn retrieve_access_token() -> Result<Token, String> {
     let access_code = match env::var("ACCESS_CODE") {
         Ok(response) => match response.as_ref() {
             "" => return Err(String::from("ACCESS_CODE is empty")),
@@ -189,7 +197,7 @@ fn retrieve_access_token() -> Result<Token, String> {
     let params = [
         ("grant_type", String::from("authorization_code")),
         ("redirect_uri", String::from("http://127.0.0.1:8080")),
-        ("cpde", access_code),
+        ("code", access_code),
     ];
 
     let url =
@@ -204,7 +212,7 @@ fn retrieve_access_token() -> Result<Token, String> {
 
     let response_unwrapped = match response {
         Ok(resp) => match resp.status().as_u16() {
-            200 => resp, // change to status code?
+            200 => resp,
             status_code => {
                 return Err(String::from(format!(
                     "failed to get data from the request: status code {}",
@@ -219,16 +227,7 @@ fn retrieve_access_token() -> Result<Token, String> {
         Ok(text) => text,
         Err(_) => return Err(String::from("Failed to retrieve response message")),
     };
-
-    let response_json = match json::parse(&unwrapped_response_text.to_owned()) {
-        Ok(json) => json,
-        Err(_) => return Err(String::from("failed to parse json")),
-    };
-
-    Ok(Token {
-        access_token: String::from(response_json["access_token"].as_str().unwrap()),
-        refresh_token: String::from(response_json["refresh_token"].as_str().unwrap()),
-    })
+    Ok(from_str(&unwrapped_response_text).unwrap())
 }
 
 pub fn update_body_fat(body_fat: f32, datetime: DateTime<Utc>) -> Result<Response, String> {
