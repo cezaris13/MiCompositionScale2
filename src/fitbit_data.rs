@@ -17,7 +17,6 @@ use std::{
     string::String,
 };
 
-// change to async in future
 pub async fn get_user_data() -> Result<UserData, String> {
     let mut access_token = retrieve_env_variable("ACCESS_TOKEN")?;
 
@@ -69,7 +68,10 @@ async fn refresh_access_token() -> Result<String, String> {
     Ok(token_data.access_token)
 }
 
-pub fn save_token_to_env(_token: &Token) {}
+pub fn save_token_to_env(_token: &Token) {
+    todo!()
+}
+
 fn is_access_token_expired(access_token: &String) -> bool {
     let TokenSlices { claims, .. } =
         raw::split_token(access_token).expect("Error Slicing the token");
@@ -173,7 +175,6 @@ pub async fn update_body_weight(
 }
 
 pub fn retrieve_env_variable(key: &str) -> Result<String, String> {
-    println!("{}", key);
     match env::var(key.to_string()) {
         Ok(response) => match response.as_ref() {
             "" => Err(format!("{} is empty", key)),

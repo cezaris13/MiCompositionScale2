@@ -2,10 +2,7 @@ Get Xiaomi Mi Composition Scale 2 weight and publishing to fitbit
 
 ## Requirements
 
- * python3
- * python-dotenv
- * bluepy
- * root permission for `bluepy.btle`
+ * cargo
 
 ```bash
 sudo make install

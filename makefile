@@ -2,14 +2,16 @@ program-name = composition-scale-2
 main-file = main.py
 
 install:
-	apt-get install python3-pip libglib2.0-dev bluez
-	python -m pip install -r requirements.txt --break-system-packages
+	curl https://sh.rustup.rs -sSf | sh
+	cargo build
 
 run:
-	python $(main-file)
+	cargo run
 
 debug:
-	python $(main-file) --loglevel DEBUG
+	export RUST_LOG=debug && \
+	export RUST_BACKTRACE=full && \
+	cargo run
 
 add-service:
 	cp $(program-name).service /etc/systemd/system/
