@@ -1,7 +1,6 @@
 use crate::utils::MassUnit;
 
-use bytes::Bytes;
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, TimeZone, Utc};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, PartialEq, Eq, Deserialize, Serialize)]
@@ -12,20 +11,31 @@ pub enum Gender {
     Female,
 }
 
+#[derive(Debug)]
 pub struct PacketData {
-    weight: f32,
-    unit: MassUnit,
-    has_impedance: bool,
-    impedance: f32,
-    is_stabilized: bool,
-    is_weight_removed: bool,
-    datetime: DateTime<Utc>,
+    pub weight: f32,
+    pub unit: MassUnit,
+    pub has_impedance: bool,
+    pub impedance: u16,
+    pub is_stabilized: bool,
+    pub is_weight_removed: bool,
+    pub datetime: DateTime<Utc>,
 }
 
-pub fn process_packet(raw_data: Bytes) -> PacketData {
-    let mut weight: f32 = 12.0;
-    let is_jin: bool = true;
-    let is_lbs: bool = false;
+pub fn process_packet(raw_data: &Vec<u8>) -> PacketData {
+    let is_lbs: bool = (raw_data[0] & 1) != 0;
+    let has_impedance: bool = (raw_data[1] & (1 << 1)) != 0;
+    let is_stabilized: bool = (raw_data[1] & (1 << 5)) != 0;
+    let is_jin: bool = (raw_data[1] & (1 << 6)) != 0;
+    let is_weight_removed: bool = (raw_data[1] & (1 << 7)) != 0;
+    let mut weight: f32 = (((raw_data[12] as u16) << 8) | raw_data[11] as u16) as f32 / 100.0;
+    let impedance: u16 = ((raw_data[10] as u16) << 8) | raw_data[9] as u16;
+    let year: i32 = (((raw_data[3] as u16) << 8) | raw_data[2] as u16).into();
+    let month: u32 = raw_data[4].into();
+    let day: u32 = raw_data[5].into();
+    let hour: u32 = raw_data[6].into();
+    let minutes: u32 = raw_data[7].into();
+    let seconds: u32 = raw_data[8].into();
 
     let unit: MassUnit;
     if is_jin {
@@ -37,19 +47,23 @@ pub fn process_packet(raw_data: Bytes) -> PacketData {
         weight /= 2.0;
     }
 
+    let datetime: DateTime<Utc> = Utc
+        .with_ymd_and_hms(year, month, day, hour, minutes, seconds)
+        .unwrap();
+
     PacketData {
         weight,
         unit,
-        has_impedance: true,
-        impedance: 430.0,
-        is_stabilized: true,
-        is_weight_removed: false,
-        datetime: todo!(),
+        has_impedance,
+        impedance,
+        is_stabilized,
+        is_weight_removed,
+        datetime,
     }
 }
 
 pub fn get_fat_percentage(
-    impedance: f32,
+    impedance: u16,
     weight: f32,
     gender: Gender,
     age: i8,
@@ -85,10 +99,10 @@ pub fn get_fat_percentage(
     check_value_overflow(fat_percentage, 5.0, 75.0)
 }
 
-fn get_lbm_coefficient(height: f32, weight: f32, impedance: f32, age: i8) -> f32 {
+fn get_lbm_coefficient(height: f32, weight: f32, impedance: u16, age: i8) -> f32 {
     let mut lbm: f32 = (height * 9.058 / 100.0) * (height / 100.0);
     lbm += weight * 0.32 + 12.226;
-    lbm -= impedance * 0.0068;
+    lbm -= impedance as f32 * 0.0068;
     lbm -= age as f32 * 0.0542;
     lbm
 }
