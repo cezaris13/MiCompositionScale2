@@ -35,7 +35,8 @@ pub async fn get_user_data() -> Result<UserData, String> {
 
 async fn refresh_access_token() -> Result<String, String> {
     let refresh_token: String = read_auth_token().refresh_token;
-    let client_id: String = read_configuration_file()?.client_id;
+    // let client_id: String = read_configuration_file()?.client_id;
+    let client_id: String = String::from("");
     let client_secret: String = read_configuration_file()?.client_secret;
 
     let encoded_client_data = BASE64_STANDARD.encode(client_id + ":" + &client_secret);
@@ -129,8 +130,7 @@ pub async fn update_body_weight(
 pub fn read_configuration_file() -> Result<Config, String> {
     match std::fs::read_to_string(CONFIG_FILE) {
         Ok(config) => {
-            println!("{}", config);
-            serde_json::from_str(&config).unwrap()
+            Ok(serde_json::from_str(&config).unwrap())
         }
         Err(e) => {
             log::error!("Failed to read the config file {}", e);

@@ -9,13 +9,14 @@ use auth::{file_exists, get_auth_token};
 use bluetooth::start_bluetooth_scanning;
 use data_types::{Config, PacketData, UserData};
 use fitbit_data::{get_user_data, read_configuration_file, update_body_fat, update_body_weight};
+use futures::executor;
 use log::{info, warn};
 use scale_metrics::{get_fat_percentage, process_packet};
 use utils::unit_to_kg;
 
 use btleplug::platform::PeripheralId;
-use uuid::Uuid;
 use std::{collections::HashMap, error::Error};
+use uuid::Uuid;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
@@ -33,7 +34,11 @@ async fn main() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-fn process_service_data_advertisement(id: PeripheralId, service_data: HashMap<Uuid, Vec<u8>>, previous_packet: &mut Vec<u8>) {
+fn process_service_data_advertisement(
+    id: PeripheralId,
+    service_data: HashMap<Uuid, Vec<u8>>,
+    previous_packet: &mut Vec<u8>,
+) {
     let search_str = "181b";
     for (uuid, data) in &service_data {
         // There's only visible mac address in linux (hci0/dev_B4_56_5D_BF_B9_56), on mac os, the id is random guid.
@@ -61,10 +66,8 @@ fn process_service_data_advertisement(id: PeripheralId, service_data: HashMap<Uu
                 *previous_packet = data.clone();
                 info!("Id: {id} with UUID: {uuid} for data: {:?}", data);
                 let processed_packet: PacketData = process_packet(data);
-                if processed_packet.is_stabilized && !processed_packet.is_weight_removed
-                {
-                    // update_fitbit_weight_data(processed_packet).await;
-                    // think of better solution
+                if processed_packet.is_stabilized && !processed_packet.is_weight_removed {
+                    executor::block_on(update_fitbit_weight_data(processed_packet));
                 }
             }
         }
