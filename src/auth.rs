@@ -10,11 +10,12 @@ use oauth2::TokenResponse;
 use oauth2::{AuthUrl, AuthorizationCode, ClientId, ClientSecret, CsrfToken, Scope, TokenUrl};
 
 use crate::data_types::Token;
+use crate::utils::get_current_project_directory;
 
 const TOKEN_FILE: &str = "auth_token.json";
 
 /// Get a token via the OAuth 2.0 Implicit Grant Flow
-async fn get_token(client_id: String, client_secret: String) -> Token {
+pub async fn get_token(client_id: String, client_secret: String) -> Token {
     let client = BasicClient::new(
         ClientId::new(client_id),
         Some(ClientSecret::new(client_secret)),
@@ -85,7 +86,11 @@ async fn get_token(client_id: String, client_secret: String) -> Token {
             );
 
             // Exchange the code with a token.
-            let token = match client.exchange_code(code).request_async(async_http_client).await {
+            let token = match client
+                .exchange_code(code)
+                .request_async(async_http_client)
+                .await
+            {
                 Ok(t) => t,
                 Err(e) => {
                     error!("OAuth2: {}", e);
@@ -104,7 +109,7 @@ async fn get_token(client_id: String, client_secret: String) -> Token {
     unreachable!();
 }
 
-pub async fn get_auth_token(id: String, secret: String)  {
+pub async fn get_auth_token(id: String, secret: String) {
     let token: Token = get_token(id, secret).await;
     write_auth_token(token);
     info!("Success! OAuth2 token recorded to {}.", TOKEN_FILE);
@@ -112,12 +117,14 @@ pub async fn get_auth_token(id: String, secret: String)  {
 
 pub fn write_auth_token(token: Token) {
     let json_token = serde_json::to_string(&token).unwrap();
-    let mut file: File = File::create(TOKEN_FILE).unwrap();
+    let token_file: String = get_current_project_directory() + "/" + TOKEN_FILE;
+    let mut file: File = File::create(token_file).unwrap();
     file.write_all(json_token.as_bytes()).unwrap();
 }
 
 pub fn read_auth_token() -> Token {
-    match std::fs::read_to_string(TOKEN_FILE) {
+    let token_file: String = get_current_project_directory() + "/" + TOKEN_FILE;
+    match std::fs::read_to_string(token_file) {
         Ok(token) => serde_json::from_str(&token).unwrap(),
         Err(e) => {
             log::error!(
@@ -130,5 +137,6 @@ pub fn read_auth_token() -> Token {
 }
 
 pub fn file_exists() -> bool {
-    fs::metadata(TOKEN_FILE).is_ok()
+    let token_file: String = get_current_project_directory() + "/" + TOKEN_FILE;
+    fs::metadata(token_file).is_ok()
 }

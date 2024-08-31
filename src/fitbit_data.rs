@@ -1,6 +1,7 @@
 use crate::{
     auth::{read_auth_token, write_auth_token},
     data_types::{Config, Payload, Token, User, UserData},
+    utils::get_current_project_directory,
 };
 
 use base64::{prelude::BASE64_STANDARD, Engine};
@@ -126,12 +127,10 @@ pub async fn update_body_weight(
     handle_http_request(response)
 }
 
-
 pub fn read_configuration_file() -> Result<Config, String> {
-    match std::fs::read_to_string(CONFIG_FILE) {
-        Ok(config) => {
-            Ok(serde_json::from_str(&config).unwrap())
-        }
+    let config_file: String = get_current_project_directory() + "/" + CONFIG_FILE;
+    match std::fs::read_to_string(config_file) {
+        Ok(config) => Ok(serde_json::from_str(&config).unwrap()),
         Err(e) => {
             log::error!("Failed to read the config file {}", e);
             Err(e.to_string())
