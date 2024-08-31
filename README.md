@@ -14,8 +14,8 @@ sudo make install
 ## Usage
 
 ```bash
-cp .env.dist .env
-vim .env
+cp variables-template.json variables.json
+vim variables.json
 make run
 # make debug
 ```

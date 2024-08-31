@@ -1,2 +1,3 @@
-.env
+variables.json
+auth_token.json
 /target

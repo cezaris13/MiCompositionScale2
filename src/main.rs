@@ -1,108 +1,79 @@
-extern crate dotenv;
-extern crate dotenv_codegen;
-
+mod auth;
+mod bluetooth;
 mod data_types;
 mod fitbit_data;
 mod scale_metrics;
 mod utils;
 
-use data_types::{PacketData, UserData};
-use fitbit_data::{
-    get_user_data, retrieve_access_token, retrieve_env_variable, save_token_to_env,
-    update_body_fat, update_body_weight,
-};
+use auth::{file_exists, get_auth_token};
+use bluetooth::start_bluetooth_scanning;
+use data_types::{Config, PacketData, UserData};
+use fitbit_data::{get_user_data, read_configuration_file, update_body_fat, update_body_weight};
 use log::{info, warn};
 use scale_metrics::{get_fat_percentage, process_packet};
 use utils::unit_to_kg;
 
-use btleplug::api::{Central, CentralEvent, Manager as _, ScanFilter};
-use btleplug::platform::{Adapter, Manager};
-use dotenv::dotenv;
-use futures::stream::StreamExt;
-use std::error::Error;
-
-async fn get_central(manager: &Manager) -> Adapter {
-    let adapters = manager.adapters().await.unwrap();
-    adapters.into_iter().nth(0).unwrap()
-}
+use btleplug::platform::PeripheralId;
+use uuid::Uuid;
+use std::{collections::HashMap, error::Error};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
-    dotenv().ok();
-
     env_logger::init();
-    match check_if_tokens_exist() {
-        Ok(_) => {}
-        Err(_) => match retrieve_access_token().await {
-            Ok(token) => save_token_to_env(&token),
-            Err(err) => {
-                println!("{}", err);
+
+    let config: Config = read_configuration_file()?;
+
+    if !file_exists() {
+        let client_id: String = config.client_id;
+        let client_secret: String = config.client_secret;
+        get_auth_token(client_id, client_secret);
+    }
+
+    start_bluetooth_scanning(&process_service_data_advertisement).await;
+    Ok(())
+}
+
+fn process_service_data_advertisement(id: PeripheralId, service_data: HashMap<Uuid, Vec<u8>>, previous_packet: &mut Vec<u8>) {
+    let search_str = "181b";
+    for (uuid, data) in &service_data {
+        // There's only visible mac address in linux (hci0/dev_B4_56_5D_BF_B9_56), on mac os, the id is random guid.
+        // Ensuring a bit more security with linux if mac address would not match (some other scales are being used).
+        if cfg!(target_os = "linux") {
+            let id_in_str = id.to_string();
+            let parts: Vec<&str> = id_in_str.split('/').collect();
+            if parts.len() > 1 {
+                let mac_address = parts[1]
+                    .strip_prefix("dev_")
+                    .unwrap_or(parts[1])
+                    .replace('_', ":");
+                if mac_address != read_configuration_file().unwrap().mac_address {
+                    continue;
+                }
+            } else {
+                println!("Invalid input format.");
             }
-        },
-    };
+        }
 
-    let manager = Manager::new().await?;
-    let central = get_central(&manager).await;
-
-    let mut events = central.events().await?;
-
-    central.start_scan(ScanFilter::default()).await?;
-    let mut previous_packet: Vec<u8> = vec![];
-    while let Some(event) = events.next().await {
-        match event {
-            CentralEvent::ServiceDataAdvertisement {
-                id, service_data, ..
-            } => {
-                let search_str = "181b";
-                for (uuid, data) in &service_data {
-                    // There's only visible mac address in linux (hci0/dev_B4_56_5D_BF_B9_56), on mac os, the id is random guid.
-                    // Ensuring a bit more security with linux if mac address would not match (some other scales are being used).
-                    if cfg!(target_os = "linux") {
-                        let id_in_str = id.to_string();
-                        let parts: Vec<&str> = id_in_str.split('/').collect();
-                        if parts.len() > 1 {
-                            let mac_address = parts[1]
-                                .strip_prefix("dev_")
-                                .unwrap_or(parts[1])
-                                .replace('_', ":");
-                            if mac_address != retrieve_env_variable("MAC_ADDRESS")? {
-                                continue;
-                            }
-                        } else {
-                            println!("Invalid input format.");
-                        }
-                    }
-
-                    if uuid.to_string().contains(search_str) {
-                        if previous_packet == data.clone() {
-                            info!("Duplicate data, skipping");
-                        } else {
-                            previous_packet = data.clone();
-                            info!("Id: {id} with UUID: {uuid} for data: {:?}", data);
-                            let processed_packet: PacketData = process_packet(data);
-                            if processed_packet.is_stabilized && !processed_packet.is_weight_removed
-                            {
-                                callback(processed_packet).await;
-                            }
-                        }
-                    }
+        if uuid.to_string().contains(search_str) {
+            if *previous_packet == data.clone() {
+                info!("Duplicate data, skipping");
+            } else {
+                *previous_packet = data.clone();
+                info!("Id: {id} with UUID: {uuid} for data: {:?}", data);
+                let processed_packet: PacketData = process_packet(data);
+                if processed_packet.is_stabilized && !processed_packet.is_weight_removed
+                {
+                    // update_fitbit_weight_data(processed_packet).await;
+                    // think of better solution
                 }
             }
-            _ => {}
         }
     }
-    Ok(())
 }
 
-fn check_if_tokens_exist() -> Result<(), String> {
-    retrieve_env_variable("ACCESS_TOKEN")?;
-    retrieve_env_variable("REFRESH_TOKEN")?;
-    Ok(())
-}
-
-async fn callback(processed_packet: PacketData) {
+async fn update_fitbit_weight_data(processed_packet: PacketData) {
     info!("received data {:?}", processed_packet);
-    let weight_in_kg = unit_to_kg(processed_packet.weight, processed_packet.unit);
+    let weight_in_kg: f32 = unit_to_kg(processed_packet.weight, processed_packet.unit);
     let user_data: UserData = match get_user_data().await {
         Ok(response) => response,
         Err(error) => {

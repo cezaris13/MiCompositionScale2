@@ -16,7 +16,7 @@ pub struct UserData {
     pub time_zone: String,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Token {
     pub access_token: String,
     pub refresh_token: String,
@@ -51,4 +51,11 @@ pub enum MassUnit {
     Kg,
     Lbs,
     Jin,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct Config {
+    pub mac_address: String,
+    pub client_id: String,
+    pub client_secret: String,
 }
