@@ -1,10 +1,10 @@
 use std::fs::{self, File};
-use std::io::{BufReader, Read, Write};
+use std::io::{BufRead, BufReader, Write};
 use std::net::TcpListener;
 
 use log::{error, info};
 use oauth2::basic::BasicClient;
-use oauth2::reqwest::http_client;
+use oauth2::reqwest::async_http_client;
 use oauth2::url::Url;
 use oauth2::TokenResponse;
 use oauth2::{AuthUrl, AuthorizationCode, ClientId, ClientSecret, CsrfToken, Scope, TokenUrl};
@@ -14,7 +14,7 @@ use crate::data_types::Token;
 const TOKEN_FILE: &str = "auth_token.json";
 
 /// Get a token via the OAuth 2.0 Implicit Grant Flow
-pub(crate) fn get_token(client_id: String, client_secret: String) -> Token {
+async fn get_token(client_id: String, client_secret: String) -> Token {
     let client = BasicClient::new(
         ClientId::new(client_id),
         Some(ClientSecret::new(client_secret)),
@@ -31,7 +31,7 @@ pub(crate) fn get_token(client_id: String, client_secret: String) -> Token {
     opener::open(authorize_url.to_string()).expect("failed to open authorize URL");
     let listener = TcpListener::bind("127.0.0.1:8080").unwrap();
     for stream in listener.incoming() {
-        if let Ok(stream) = stream {
+        if let Ok(mut stream) = stream {
             let code: AuthorizationCode;
 
             let state: CsrfToken;
@@ -39,7 +39,7 @@ pub(crate) fn get_token(client_id: String, client_secret: String) -> Token {
                 let mut reader: BufReader<&std::net::TcpStream> = BufReader::new(&stream);
 
                 let mut request_line: String = String::new();
-                reader.read_to_string(&mut request_line).unwrap();
+                reader.read_line(&mut request_line).unwrap();
 
                 let redirect_url = request_line.split_whitespace().nth(1).unwrap();
                 let url = Url::parse(&("http://localhost".to_string() + redirect_url)).unwrap();
@@ -69,6 +69,14 @@ pub(crate) fn get_token(client_id: String, client_secret: String) -> Token {
                 state = CsrfToken::new(value.into_owned());
             }
 
+            let message = "Token has been retrieved. You may close the tab.";
+            let response = format!(
+                "HTTP/1.1 200 OK\r\ncontent-length: {}\r\n\r\n{}",
+                message.len(),
+                message
+            );
+            stream.write_all(response.as_bytes()).unwrap();
+
             // Verify that the state we generated matches the one the server sent us.
             assert_eq!(
                 csrf_state.secret(),
@@ -77,7 +85,7 @@ pub(crate) fn get_token(client_id: String, client_secret: String) -> Token {
             );
 
             // Exchange the code with a token.
-            let token = match client.exchange_code(code).request(http_client) {
+            let token = match client.exchange_code(code).request_async(async_http_client).await {
                 Ok(t) => t,
                 Err(e) => {
                     error!("OAuth2: {}", e);
@@ -96,8 +104,8 @@ pub(crate) fn get_token(client_id: String, client_secret: String) -> Token {
     unreachable!();
 }
 
-pub fn get_auth_token(id: String, secret: String) {
-    let token: Token = get_token(id, secret);
+pub async fn get_auth_token(id: String, secret: String)  {
+    let token: Token = get_token(id, secret).await;
     write_auth_token(token);
     info!("Success! OAuth2 token recorded to {}.", TOKEN_FILE);
 }

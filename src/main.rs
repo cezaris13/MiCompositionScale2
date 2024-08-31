@@ -27,7 +27,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     if !file_exists() {
         let client_id: String = config.client_id;
         let client_secret: String = config.client_secret;
-        get_auth_token(client_id, client_secret);
+        get_auth_token(client_id, client_secret).await;
     }
 
     start_bluetooth_scanning(&process_service_data_advertisement).await;
