@@ -1,4 +1,4 @@
-Get Xiaomi Mi Composition Scale 2 weight and publishing to fitbit
+Get Xiaomi Mi Composition Scale 2 weight and publish it to fitbit via fitbit API.
 
 ## Requirements
 
@@ -74,3 +74,9 @@ Control bytes format (LSB first):
 * bit 13:  unknown (always 1 on my scale)
 * bit 14:  have impedance (impedance bytes are set correctly)
 * bit 15:  unknown
+
+
+# TODO
+- [ ] Check scale battery status and if low, send notification to the email.
+- [ ] On fresh start the scales time is Unix time 0, 1 January 1970, set current date if that's the case.
+- [ ] The time retrieved from scales is utc time, add current timezone offset.
