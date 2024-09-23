@@ -1,5 +1,4 @@
 program-name = composition-scale-2
-main-file = main.py
 
 install:
 ifeq ($(shell uname ),Linux)
