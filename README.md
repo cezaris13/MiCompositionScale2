@@ -11,6 +11,15 @@ Get Xiaomi Mi Composition Scale 2 weight and publish it to fitbit via fitbit API
 sudo make install
 ```
 
+## Quick Start with Fitbit API
+
+To use this this program, you must have a few things:
+1. A valid [Fitbit account](https://www.fitbit.com/signup)
+2. A [registered web application](https://dev.fitbit.com/apps/new)
+  - To access the most personal information, set the `OAuth 2.0 Application Type` to `Personal`
+  - The `Redirect Url` should be http://localhost:8080
+3. The OAuth2 `CLIENT_ID` and `CLIENT_SECRET` of [your app found here](https://dev.fitbit.com/apps)
+
 ## Usage
 
 ```bash
