@@ -1,4 +1,3 @@
-use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -25,17 +24,6 @@ pub struct Token {
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Payload {
     pub exp: u64,
-}
-
-#[derive(Debug)]
-pub struct PacketData {
-    pub weight: f32,
-    pub unit: MassUnit,
-    pub has_impedance: bool,
-    pub impedance: u16,
-    pub is_stabilized: bool,
-    pub is_weight_removed: bool,
-    pub datetime: DateTime<Utc>,
 }
 
 #[derive(Debug, Deserialize, PartialEq, Serialize)]
