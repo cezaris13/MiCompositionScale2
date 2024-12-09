@@ -1,3 +1,5 @@
 variables.json
 auth_token.json
 /target
+
+Cargo.lock
