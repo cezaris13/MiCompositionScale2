@@ -22,7 +22,7 @@ impl BluetoothScanner {
     pub async fn start_bluetooth_scanning(&self) -> Result<(), String> {
         let mut events = match self.adapter.events().await {
             Ok(result) => result,
-            Err(error) => return Err(format!("{}", error)),
+            Err(error) => return Err(String::from(error)),
         };
 
         if let Err(error) = self
@@ -30,7 +30,7 @@ impl BluetoothScanner {
             .start_scan(btleplug::api::ScanFilter::default())
             .await
         {
-            return Err(format!("{}", error));
+            return Err(String::from(error));
         }
 
         let mut previous_packet: Vec<u8> = vec![];
@@ -83,13 +83,14 @@ impl BluetoothScanner {
             if uuid.to_string().contains(search_str) {
                 if previous_packet == data {
                     info!("Duplicate data, skipping");
-                } else {
-                    *previous_packet = data.to_vec();
-                    info!("Id: {id} with UUID: {uuid} for data: {:?}", data);
-                    let processed_packet = PacketData::from(data);
-                    if processed_packet.is_stabilized && !processed_packet.is_weight_removed {
-                        processed_packet.update_fitbit_weight_data().await;
-                    }
+                    continue;
+                }
+
+                *previous_packet = data.to_vec();
+                info!("Id: {id} with UUID: {uuid} for data: {:?}", data);
+                let processed_packet = PacketData::from(data);
+                if processed_packet.is_stabilized && !processed_packet.is_weight_removed {
+                    processed_packet.update_fitbit_weight_data().await;
                 }
             }
         }
@@ -99,7 +100,7 @@ impl BluetoothScanner {
     async fn get_adapter() -> Result<Adapter, String> {
         let manager = match Manager::new().await {
             Ok(result) => result,
-            Err(error) => return Err(format!("{}", error)),
+            Err(error) => return Err(String::from(error)),
         };
         Self::get_central(&manager).await
     }
@@ -107,7 +108,7 @@ impl BluetoothScanner {
     async fn get_central(manager: &Manager) -> Result<Adapter, String> {
         let adapters = match manager.adapters().await {
             Ok(result) => result,
-            Err(error) => return Err(format!("{}", error)),
+            Err(error) => return Err(String::from(error)),
         };
 
         match adapters.into_iter().nth(0) {
