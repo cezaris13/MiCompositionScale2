@@ -35,7 +35,7 @@ pub async fn get_user_data() -> Result<UserData, String> {
 }
 
 async fn refresh_access_token() -> Result<String, String> {
-    let refresh_token: String = read_auth_token().refresh_token;
+    let refresh_token: String = read_auth_token()?.refresh_token;
     // let client_id: String = read_configuration_file()?.client_id;
     let client_id: String = String::from("");
     let client_secret: String = read_configuration_file()?.client_secret;
@@ -59,7 +59,7 @@ async fn refresh_access_token() -> Result<String, String> {
 
     let response_body: String = get_response_body(response).await?;
     let token_data: Token = from_str(response_body.as_str()).unwrap();
-    write_auth_token(token_data.clone());
+    write_auth_token(token_data.clone())?;
 
     Ok(token_data.access_token)
 }
@@ -128,12 +128,12 @@ pub async fn update_body_weight(
 }
 
 pub fn read_configuration_file() -> Result<Config, String> {
-    let config_file: String = get_current_project_directory() + "/" + CONFIG_FILE;
+    let config_file: String = get_current_project_directory()? + "/" + CONFIG_FILE;
     match std::fs::read_to_string(config_file) {
-        Ok(config) => Ok(serde_json::from_str(&config).unwrap()),
-        Err(e) => {
-            log::error!("Failed to read the config file {}", e);
-            Err(e.to_string())
+        Ok(config) => Ok(from_str(&config).unwrap()),
+        Err(error) => {
+            log::error!("Failed to read the config file {}", error);
+            Err(String::from(error.to_string()))
         }
     }
 }
@@ -160,7 +160,7 @@ async fn get_response_body(response: Response) -> Result<String, String> {
 }
 
 async fn get_access_token() -> Result<String, String> {
-    let access_token = read_auth_token().access_token;
+    let access_token = read_auth_token()?.access_token;
 
     if is_access_token_expired(&access_token) {
         return refresh_access_token().await;

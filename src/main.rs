@@ -18,10 +18,10 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     let config: Config = read_configuration_file()?;
 
-    if !file_exists() {
+    if !file_exists()? {
         let client_id: String = config.client_id;
         let client_secret: String = config.client_secret;
-        get_auth_token(client_id, client_secret).await;
+        get_auth_token(client_id, client_secret).await?;
     }
 
     bluetooth_scanner.start_bluetooth_scanning().await?;

@@ -128,8 +128,8 @@ impl BluetoothScanner {
         };
 
         match adapters.into_iter().nth(0) {
-            Some(adapter) => return Ok(adapter),
-            None => return Err(String::from("Could not get adapter")),
+            Some(adapter) => Ok(adapter),
+            None => Err(String::from("Could not get adapter")),
         }
     }
 }
