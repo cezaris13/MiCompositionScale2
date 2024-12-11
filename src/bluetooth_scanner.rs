@@ -22,12 +22,7 @@ impl BluetoothScanner {
     pub async fn start_bluetooth_scanning(&self) -> Result<(), String> {
         let mut events = match self.adapter.events().await {
             Ok(result) => result,
-            Err(error) => {
-                return Err(String::from(format!(
-                    "{}",
-                    BluetoothScanner::error_to_string(error)
-                )))
-            }
+            Err(error) => return Err(format!("{}", error)),
         };
 
         if let Err(error) = self
@@ -35,10 +30,7 @@ impl BluetoothScanner {
             .start_scan(btleplug::api::ScanFilter::default())
             .await
         {
-            return Err(String::from(format!(
-                "{}",
-                BluetoothScanner::error_to_string(error)
-            )));
+            return Err(format!("{}", error));
         }
 
         let mut previous_packet: Vec<u8> = vec![];
@@ -104,19 +96,10 @@ impl BluetoothScanner {
         Ok(())
     }
 
-    pub fn error_to_string(error: btleplug::Error) -> String {
-        format!("{:?}", error)
-    }
-
     async fn get_adapter() -> Result<Adapter, String> {
         let manager = match Manager::new().await {
             Ok(result) => result,
-            Err(error) => {
-                return Err(String::from(format!(
-                    "{}",
-                    BluetoothScanner::error_to_string(error)
-                )))
-            }
+            Err(error) => return Err(format!("{}", error)),
         };
         Self::get_central(&manager).await
     }
@@ -124,7 +107,7 @@ impl BluetoothScanner {
     async fn get_central(manager: &Manager) -> Result<Adapter, String> {
         let adapters = match manager.adapters().await {
             Ok(result) => result,
-            Err(error) => return Err(format!("{}", BluetoothScanner::error_to_string(error))),
+            Err(error) => return Err(format!("{}", error)),
         };
 
         match adapters.into_iter().nth(0) {
