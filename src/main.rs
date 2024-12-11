@@ -14,7 +14,7 @@ use std::error::Error;
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
     env_logger::init();
-    let bluetooth_scanner = BluetoothScanner::new().await;
+    let bluetooth_scanner = BluetoothScanner::new().await?;
 
     let config: Config = read_configuration_file()?;
 
@@ -24,6 +24,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         get_auth_token(client_id, client_secret).await;
     }
 
-    bluetooth_scanner.start_bluetooth_scanning().await;
+    bluetooth_scanner.start_bluetooth_scanning().await?;
+
     Ok(())
 }

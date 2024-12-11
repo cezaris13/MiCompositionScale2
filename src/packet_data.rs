@@ -2,7 +2,7 @@ use crate::data_types::UserData;
 use crate::data_types::{Gender, MassUnit};
 use crate::fitbit_data::{get_user_data, update_body_fat, update_body_weight};
 
-use chrono::{DateTime, TimeZone, Utc};
+use chrono::{DateTime, LocalResult, TimeZone, Utc};
 use log::{info, warn};
 
 #[derive(Debug)]
@@ -17,6 +17,8 @@ pub struct PacketData {
 }
 
 impl From<&Vec<u8>> for PacketData {
+    // type Error = String;
+
     fn from(raw_data: &Vec<u8>) -> Self {
         let is_lbs: bool = (raw_data[0] & 1) != 0;
         let has_impedance: bool = (raw_data[1] & (1 << 1)) != 0;
@@ -42,9 +44,11 @@ impl From<&Vec<u8>> for PacketData {
             weight /= 2.0;
         }
 
-        let datetime: DateTime<Utc> = Utc
-            .with_ymd_and_hms(year, month, day, hour, minutes, seconds)
-            .unwrap();
+        // Safely handle datetime creation
+        let datetime = match Utc.with_ymd_and_hms(year, month, day, hour, minutes, seconds) {
+            LocalResult::Single(dt) => dt,
+            _ => Utc::now(), // Fallback to current time if invalid
+        };
 
         Self {
             weight,
