@@ -111,8 +111,8 @@ pub async fn get_token(client_id: String, client_secret: String) -> Result<Token
             };
 
             return Ok(Token {
-                access_token: token.access_token().secret().clone(),
-                refresh_token: token.refresh_token().expect("REASON").secret().clone(),
+                access_token: token.access_token().secret().to_string(),
+                refresh_token: token.refresh_token().expect("REASON").secret().to_string(),
             });
         }
     }

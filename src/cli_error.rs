@@ -10,16 +10,18 @@ pub enum CliError {
     BluetoothError(btleplug::Error),
     OAuthError(oauth2::url::ParseError),
     IOError(std::io::Error),
+    JsonWebTokenError(jsonwebtokens::error::Error),
 }
 
 impl fmt::Display for CliError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            CliError::BluetoothError(ref err) => write!(f, "Bluetooth error: {}", err),
-            CliError::ParseError(ref err) => write!(f, "Parse error: {}", err),
-            CliError::Error(err) => write!(f, "Error in program: {}", err),
-            CliError::OAuthError(err) => write!(f, "OAuth error in program: {}", err),
-            CliError::IOError(err) => write!(f, "IO error in program: {}", err),
+            Self::BluetoothError(ref err) => write!(f, "Bluetooth error: {}", err),
+            Self::ParseError(ref err) => write!(f, "Parse error: {}", err),
+            Self::Error(err) => write!(f, "Error in program: {}", err),
+            Self::OAuthError(err) => write!(f, "OAuth error in program: {}", err),
+            Self::IOError(err) => write!(f, "IO error in program: {}", err),
+            Self::JsonWebTokenError(ref err) => write!(f, "JsonWebToken error: {}", err),
         }
     }
 }
@@ -31,37 +33,24 @@ impl error::Error for CliError {
             Self::BluetoothError(err) => Some(err),
             Self::OAuthError(err) => Some(err),
             Self::IOError(err) => Some(err),
+            Self::JsonWebTokenError(err) => Some(err),
             Self::Error(_) => None,
         }
     }
 }
-
-impl From<serde_json::Error> for CliError {
-    fn from(err: serde_json::Error) -> CliError {
-        CliError::ParseError(err)
-    }
+macro_rules! from_error {
+    ($source_error:ty, $target_error:ident::$variant:ident) => {
+        impl From<$source_error> for $target_error {
+            fn from(err: $source_error) -> $target_error {
+                $target_error::$variant(err)
+            }
+        }
+    };
 }
 
-impl From<btleplug::Error> for CliError {
-    fn from(err: btleplug::Error) -> CliError {
-        CliError::BluetoothError(err)
-    }
-}
-
-impl From<std::string::String> for CliError {
-    fn from(err: std::string::String) -> CliError {
-        CliError::Error(err)
-    }
-}
-
-impl From<oauth2::url::ParseError> for CliError {
-    fn from(err: oauth2::url::ParseError) -> CliError {
-        CliError::OAuthError(err)
-    }
-}
-
-impl From<std::io::Error> for CliError {
-    fn from(err: std::io::Error) -> CliError {
-        CliError::IOError(err)
-    }
-}
+from_error!(serde_json::Error, CliError::ParseError);
+from_error!(btleplug::Error, CliError::BluetoothError);
+from_error!(std::string::String, CliError::Error);
+from_error!(oauth2::url::ParseError, CliError::OAuthError);
+from_error!(std::io::Error, CliError::IOError);
+from_error!(jsonwebtokens::error::Error, CliError::JsonWebTokenError);

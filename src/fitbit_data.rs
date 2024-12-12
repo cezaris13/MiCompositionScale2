@@ -31,7 +31,7 @@ pub async fn get_user_data() -> Result<UserData, CliError> {
     let response = handle_http_request(response)?;
 
     let response_body: String = get_response_body(response).await?;
-    let user_data: User = from_str(response_body.as_str()).unwrap();
+    let user_data: User = from_str(response_body.as_str())?;
     Ok(user_data.user)
 }
 
@@ -46,7 +46,7 @@ async fn refresh_access_token() -> Result<String, CliError> {
         ("refresh_token", refresh_token),
         ("grant_type", String::from("refresh_token")),
     ];
-    let url: Url = Url::parse_with_params("https://api.fitbit.com/oauth2/token", &params).unwrap();
+    let url: Url = Url::parse_with_params("https://api.fitbit.com/oauth2/token", &params)?;
 
     let client: Client = Client::new();
     let response = client
@@ -59,23 +59,22 @@ async fn refresh_access_token() -> Result<String, CliError> {
     let response = handle_http_request(response)?;
 
     let response_body: String = get_response_body(response).await?;
-    let token_data: Token = from_str(response_body.as_str()).unwrap();
+    let token_data: Token = from_str(response_body.as_str())?;
     write_auth_token(token_data.clone())?;
 
     Ok(token_data.access_token)
 }
 
-fn is_access_token_expired(access_token: &String) -> bool {
-    let TokenSlices { claims, .. } =
-        raw::split_token(access_token).expect("Error Slicing the token");
-    let raw_claim = decode_json_token_slice(claims).expect("Error getting the claims");
-    let final_claim: Payload = from_value(raw_claim.clone()).unwrap();
+fn is_access_token_expired(access_token: &String) -> Result<bool, CliError> {
+    let TokenSlices { claims, .. } = raw::split_token(access_token)?;
+    let raw_claim = decode_json_token_slice(claims)?;
+    let final_claim: Payload = from_value(raw_claim.clone())?;
 
     let current_time_since_unix = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .expect("Time went backwards")
         .as_secs();
-    current_time_since_unix > final_claim.exp
+    Ok(current_time_since_unix > final_claim.exp)
 }
 
 pub async fn update_body_fat(body_fat: f32, datetime: DateTime<Utc>) -> Result<Response, CliError> {
@@ -88,8 +87,7 @@ pub async fn update_body_fat(body_fat: f32, datetime: DateTime<Utc>) -> Result<R
     ];
 
     let url: Url =
-        Url::parse_with_params("https://api.fitbit.com/1/user/-/body/log/fat.json", &params)
-            .unwrap();
+        Url::parse_with_params("https://api.fitbit.com/1/user/-/body/log/fat.json", &params)?;
 
     let client: Client = Client::new();
     let response = client
@@ -115,8 +113,7 @@ pub async fn update_body_weight(
     let url: Url = Url::parse_with_params(
         "https://api.fitbit.com/1/user/-/body/log/weight.json",
         &params,
-    )
-    .unwrap();
+    )?;
 
     let client: Client = Client::new();
     let response: Result<Response, Error> = client
@@ -131,7 +128,7 @@ pub async fn update_body_weight(
 pub fn read_configuration_file() -> Result<Config, CliError> {
     let config_file: String = get_current_project_directory()? + "/" + CONFIG_FILE;
     match std::fs::read_to_string(config_file) {
-        Ok(config) => Ok(from_str(&config).unwrap()),
+        Ok(config) => Ok(from_str(&config)?),
         Err(error) => {
             log::error!("Failed to read the config file {}", error);
             Err(CliError::Error(error.to_string()))
@@ -165,7 +162,7 @@ async fn get_response_body(response: Response) -> Result<String, CliError> {
 async fn get_access_token() -> Result<String, CliError> {
     let access_token = read_auth_token()?.access_token;
 
-    if is_access_token_expired(&access_token) {
+    if is_access_token_expired(&access_token)? {
         return refresh_access_token().await;
     }
 
