@@ -1,5 +1,6 @@
 mod auth;
 mod bluetooth_scanner;
+mod cli_error;
 mod data_types;
 mod fitbit_data;
 mod packet_data;

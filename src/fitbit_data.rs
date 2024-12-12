@@ -1,5 +1,6 @@
 use crate::{
     auth::{read_auth_token, write_auth_token},
+    cli_error::CliError,
     data_types::{Config, Payload, Token, User, UserData},
     utils::get_current_project_directory,
 };
@@ -17,7 +18,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 const CONFIG_FILE: &str = "variables.json";
 
-pub async fn get_user_data() -> Result<UserData, String> {
+pub async fn get_user_data() -> Result<UserData, CliError> {
     let access_token = get_access_token().await?;
 
     let client: Client = Client::new();
@@ -34,7 +35,7 @@ pub async fn get_user_data() -> Result<UserData, String> {
     Ok(user_data.user)
 }
 
-async fn refresh_access_token() -> Result<String, String> {
+async fn refresh_access_token() -> Result<String, CliError> {
     let refresh_token: String = read_auth_token()?.refresh_token;
     // let client_id: String = read_configuration_file()?.client_id;
     let client_id: String = String::from("");
@@ -77,7 +78,7 @@ fn is_access_token_expired(access_token: &String) -> bool {
     current_time_since_unix > final_claim.exp
 }
 
-pub async fn update_body_fat(body_fat: f32, datetime: DateTime<Utc>) -> Result<Response, String> {
+pub async fn update_body_fat(body_fat: f32, datetime: DateTime<Utc>) -> Result<Response, CliError> {
     let access_token = get_access_token().await?;
 
     let params = [
@@ -103,7 +104,7 @@ pub async fn update_body_fat(body_fat: f32, datetime: DateTime<Utc>) -> Result<R
 pub async fn update_body_weight(
     body_weight: f32,
     datetime: DateTime<Utc>,
-) -> Result<Response, String> {
+) -> Result<Response, CliError> {
     let access_token = get_access_token().await?;
 
     let params = [
@@ -127,39 +128,41 @@ pub async fn update_body_weight(
     handle_http_request(response)
 }
 
-pub fn read_configuration_file() -> Result<Config, String> {
+pub fn read_configuration_file() -> Result<Config, CliError> {
     let config_file: String = get_current_project_directory()? + "/" + CONFIG_FILE;
     match std::fs::read_to_string(config_file) {
         Ok(config) => Ok(from_str(&config).unwrap()),
         Err(error) => {
             log::error!("Failed to read the config file {}", error);
-            Err(String::from(error.to_string()))
+            Err(CliError::Error(error.to_string()))
         }
     }
 }
 
-fn handle_http_request(response: Result<Response, Error>) -> Result<Response, String> {
+fn handle_http_request(response: Result<Response, Error>) -> Result<Response, CliError> {
     match response {
         Ok(resp) => match resp.status() {
             StatusCode::OK => Ok(resp),
             StatusCode::CREATED => Ok(resp),
-            status_code => Err(format!(
+            status_code => Err(CliError::Error(format!(
                 "failed to get data from the request: status code {}",
                 status_code
-            )),
+            ))),
         },
-        Err(err) => Err(err.to_string()),
+        Err(err) => Err(CliError::Error(err.to_string())),
     }
 }
 
-async fn get_response_body(response: Response) -> Result<String, String> {
+async fn get_response_body(response: Response) -> Result<String, CliError> {
     match response.text().await {
         Ok(text) => Ok(text),
-        Err(_) => Err(String::from("Failed to retrieve response body")),
+        Err(_) => Err(CliError::Error(String::from(
+            "Failed to retrieve response body",
+        ))),
     }
 }
 
-async fn get_access_token() -> Result<String, String> {
+async fn get_access_token() -> Result<String, CliError> {
     let access_token = read_auth_token()?.access_token;
 
     if is_access_token_expired(&access_token) {

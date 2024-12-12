@@ -1,3 +1,4 @@
+use crate::cli_error::CliError;
 use crate::packet_data::PacketData;
 use crate::read_configuration_file;
 
@@ -14,24 +15,17 @@ pub struct BluetoothScanner {
 }
 
 impl BluetoothScanner {
-    pub async fn new() -> Result<Self, String> {
+    pub async fn new() -> Result<Self, CliError> {
         let adapter = Self::get_adapter().await?;
         Ok(Self { adapter })
     }
 
-    pub async fn start_bluetooth_scanning(&self) -> Result<(), String> {
-        let mut events = match self.adapter.events().await {
-            Ok(result) => result,
-            Err(error) => return Err(String::from(error)),
-        };
+    pub async fn start_bluetooth_scanning(&self) -> Result<(), CliError> {
+        let mut events = self.adapter.events().await?;
 
-        if let Err(error) = self
-            .adapter
+        self.adapter
             .start_scan(btleplug::api::ScanFilter::default())
-            .await
-        {
-            return Err(String::from(error));
-        }
+            .await?;
 
         let mut previous_packet: Vec<u8> = vec![];
         while let Some(event) = events.next().await {
@@ -56,7 +50,7 @@ impl BluetoothScanner {
         id: PeripheralId,
         service_data: HashMap<Uuid, Vec<u8>>,
         previous_packet: &mut Vec<u8>,
-    ) -> Result<(), String> {
+    ) -> Result<(), CliError> {
         let search_str = "181b";
         for (uuid, data) in &service_data {
             // There's only visible mac address in linux (hci0/dev_B4_56_5D_BF_B9_56), on mac os, the id is random guid.
@@ -97,23 +91,17 @@ impl BluetoothScanner {
         Ok(())
     }
 
-    async fn get_adapter() -> Result<Adapter, String> {
-        let manager = match Manager::new().await {
-            Ok(result) => result,
-            Err(error) => return Err(String::from(error)),
-        };
+    async fn get_adapter() -> Result<Adapter, CliError> {
+        let manager = Manager::new().await?;
         Self::get_central(&manager).await
     }
 
-    async fn get_central(manager: &Manager) -> Result<Adapter, String> {
-        let adapters = match manager.adapters().await {
-            Ok(result) => result,
-            Err(error) => return Err(String::from(error)),
-        };
+    async fn get_central(manager: &Manager) -> Result<Adapter, CliError> {
+        let adapters = manager.adapters().await?;
 
         match adapters.into_iter().nth(0) {
             Some(adapter) => Ok(adapter),
-            None => Err(String::from("Could not get adapter")),
+            None => Err(CliError::Error(String::from("Could not get adapter"))),
         }
     }
 }

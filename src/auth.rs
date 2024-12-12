@@ -9,18 +9,21 @@ use oauth2::url::Url;
 use oauth2::TokenResponse;
 use oauth2::{AuthUrl, AuthorizationCode, ClientId, ClientSecret, CsrfToken, Scope, TokenUrl};
 
+use crate::cli_error::CliError;
 use crate::data_types::Token;
 use crate::utils::get_current_project_directory;
 
 const TOKEN_FILE: &str = "auth_token.json";
 
 /// Get a token via the OAuth 2.0 Implicit Grant Flow
-pub async fn get_token(client_id: String, client_secret: String) -> Result<Token, String> {
+pub async fn get_token(client_id: String, client_secret: String) -> Result<Token, CliError> {
     let client = BasicClient::new(
         ClientId::new(client_id),
         Some(ClientSecret::new(client_secret)),
-        AuthUrl::new("https://www.fitbit.com/oauth2/authorize".to_string()).unwrap(),
-        Some(TokenUrl::new("https://api.fitbit.com/oauth2/token".to_string()).unwrap()),
+        AuthUrl::new("https://www.fitbit.com/oauth2/authorize".to_string())?,
+        Some(TokenUrl::new(
+            "https://api.fitbit.com/oauth2/token".to_string(),
+        )?),
     );
 
     // Generate the authorization URL to which we'll redirect the user.
@@ -42,7 +45,15 @@ pub async fn get_token(client_id: String, client_secret: String) -> Result<Token
                 let mut request_line: String = String::new();
                 reader.read_line(&mut request_line).unwrap();
 
-                let redirect_url = request_line.split_whitespace().nth(1).unwrap();
+                let redirect_url = match request_line.split_whitespace().nth(1) {
+                    Some(element) => element,
+                    None => {
+                        return Err(CliError::Error(String::from(
+                            "No element has been provided",
+                        )))
+                    }
+                };
+
                 let url = Url::parse(&("http://localhost".to_string() + redirect_url)).unwrap();
 
                 let code_pair: (std::borrow::Cow<'_, str>, std::borrow::Cow<'_, str>) = url
@@ -95,7 +106,7 @@ pub async fn get_token(client_id: String, client_secret: String) -> Result<Token
                 Err(e) => {
                     error!("OAuth2: {}", e);
                     eprintln!("Failed to exchange the code for a valid access_token.\nIncorrect client secret?");
-                    return Err(e.to_string());
+                    return Err(CliError::Error(e.to_string()));
                 }
             };
 
@@ -109,39 +120,39 @@ pub async fn get_token(client_id: String, client_secret: String) -> Result<Token
     unreachable!();
 }
 
-pub async fn get_auth_token(id: String, secret: String) -> Result<(), String> {
+pub async fn get_auth_token(id: String, secret: String) -> Result<(), CliError> {
     let token: Token = get_token(id, secret).await?;
     write_auth_token(token)?;
     info!("Success! OAuth2 token recorded to {}.", TOKEN_FILE);
     Ok(())
 }
 
-pub fn write_auth_token(token: Token) -> Result<(), String> {
-    let json_token = serde_json::to_string(&token).unwrap();
+pub fn write_auth_token(token: Token) -> Result<(), CliError> {
+    let json_token = serde_json::to_string(&token)?;
     let token_file: String = get_current_project_directory()? + "/" + TOKEN_FILE;
-    let mut file: File = File::create(token_file).unwrap();
-    file.write_all(json_token.as_bytes()).unwrap();
+    let mut file: File = File::create(token_file)?;
+    file.write_all(json_token.as_bytes())?;
 
     Ok(())
 }
 
-pub fn read_auth_token() -> Result<Token, String> {
+pub fn read_auth_token() -> Result<Token, CliError> {
     let token_file: String = get_current_project_directory()? + "/" + TOKEN_FILE;
     match fs::read_to_string(token_file) {
-        Ok(token) => Ok(serde_json::from_str(&token).unwrap()),
+        Ok(token) => Ok(serde_json::from_str(&token)?),
         Err(error) => {
             log::error!(
                 "Failed to read the auth token ({})\nHave you run the `auth` command?",
                 error
             );
-            Err(String::from(
+            Err(CliError::Error(String::from(
                 "Failed to read the auth token.\nHave you run the `auth` command?",
-            ))
+            )))
         }
     }
 }
 
-pub fn file_exists() -> Result<bool, String> {
+pub fn file_exists() -> Result<bool, CliError> {
     let token_file: String = get_current_project_directory()? + "/" + TOKEN_FILE;
     Ok(fs::metadata(token_file).is_ok())
 }
