@@ -113,10 +113,7 @@ impl Authorization {
         let raw_claim = decode_json_token_slice(claims)?;
         let final_claim: Payload = from_value(raw_claim.clone())?;
 
-        let current_time_since_unix = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .expect("Time went backwards")
-            .as_secs();
+        let current_time_since_unix = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs();
         Ok(current_time_since_unix > final_claim.exp)
     }
 
@@ -137,7 +134,7 @@ impl Authorization {
             .add_scope(Scope::new("profile".to_string()))
             .add_scope(Scope::new("weight".to_string()))
             .url();
-        opener::open(authorize_url.to_string()).expect("failed to open authorize URL");
+        opener::open(authorize_url.to_string())?;
         let listener = TcpListener::bind("127.0.0.1:8080").unwrap();
         for stream in listener.incoming() {
             if let Ok(mut stream) = stream {
@@ -215,9 +212,14 @@ impl Authorization {
                     }
                 };
 
+                let refresh_token = match token.refresh_token() {
+                    Some(token) => token.secret(),
+                    None => "",
+                };
+
                 return Ok(Token {
                     access_token: token.access_token().secret().to_string(),
-                    refresh_token: token.refresh_token().expect("REASON").secret().to_string(),
+                    refresh_token: refresh_token.to_string(),
                 });
             }
         }

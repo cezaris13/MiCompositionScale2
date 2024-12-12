@@ -11,17 +11,21 @@ pub enum CliError {
     OAuthError(oauth2::url::ParseError),
     IOError(std::io::Error),
     JsonWebTokenError(jsonwebtokens::error::Error),
+    OpenerError(opener::OpenError),
+    SystemTimeError(std::time::SystemTimeError),
 }
 
 impl fmt::Display for CliError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Self::BluetoothError(ref err) => write!(f, "Bluetooth error: {}", err),
-            Self::ParseError(ref err) => write!(f, "Parse error: {}", err),
+            Self::BluetoothError(err) => write!(f, "Bluetooth error: {}", err),
+            Self::ParseError(err) => write!(f, "Parse error: {}", err),
             Self::Error(err) => write!(f, "Error in program: {}", err),
             Self::OAuthError(err) => write!(f, "OAuth error in program: {}", err),
             Self::IOError(err) => write!(f, "IO error in program: {}", err),
-            Self::JsonWebTokenError(ref err) => write!(f, "JsonWebToken error: {}", err),
+            Self::JsonWebTokenError(err) => write!(f, "JsonWebToken error: {}", err),
+            Self::OpenerError(err) => write!(f, "Opener error: {}", err),
+            Self::SystemTimeError(err) => write!(f, "SystemTimeError error: {}", err),
         }
     }
 }
@@ -34,6 +38,8 @@ impl error::Error for CliError {
             Self::OAuthError(err) => Some(err),
             Self::IOError(err) => Some(err),
             Self::JsonWebTokenError(err) => Some(err),
+            Self::OpenerError(err) => Some(err),
+            Self::SystemTimeError(err) => Some(err),
             Self::Error(_) => None,
         }
     }
@@ -55,3 +61,5 @@ from_error!(std::string::String, CliError::Error);
 from_error!(oauth2::url::ParseError, CliError::OAuthError);
 from_error!(std::io::Error, CliError::IOError);
 from_error!(jsonwebtokens::error::Error, CliError::JsonWebTokenError);
+from_error!(opener::OpenError, CliError::OpenerError);
+from_error!(std::time::SystemTimeError, CliError::SystemTimeError);
