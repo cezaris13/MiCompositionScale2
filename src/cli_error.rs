@@ -38,6 +38,7 @@ impl error::Error for CliError {
         }
     }
 }
+
 macro_rules! from_error {
     ($source_error:ty, $target_error:ident::$variant:ident) => {
         impl From<$source_error> for $target_error {

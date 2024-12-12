@@ -1,6 +1,6 @@
 use crate::cli_error::CliError;
 use crate::packet_data::PacketData;
-use crate::read_configuration_file;
+use crate::utils::Utils;
 
 use btleplug::api::{Central, CentralEvent, Manager as _};
 use btleplug::platform::{Adapter, Manager, PeripheralId};
@@ -66,7 +66,7 @@ impl BluetoothScanner {
                     }
                     .replace('_', ":");
 
-                    if mac_address != read_configuration_file()?.mac_address {
+                    if mac_address != Utils::read_configuration_file()?.mac_address {
                         continue;
                     }
                 } else {

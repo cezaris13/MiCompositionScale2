@@ -1,6 +1,7 @@
+use crate::authorization::Authorization;
 use crate::data_types::UserData;
 use crate::data_types::{Gender, MassUnit};
-use crate::fitbit_data::{get_user_data, update_body_fat, update_body_weight};
+use crate::fitbit_api_manager::FitbitApiManager;
 
 use chrono::{DateTime, LocalResult, TimeZone, Utc};
 use log::{info, warn};
@@ -14,11 +15,11 @@ pub struct PacketData {
     pub is_stabilized: bool,
     pub is_weight_removed: bool,
     pub datetime: DateTime<Utc>,
+
+    fitbit_api_manager: FitbitApiManager,
 }
 
 impl From<&Vec<u8>> for PacketData {
-    // type Error = String;
-
     fn from(raw_data: &Vec<u8>) -> Self {
         let is_lbs: bool = (raw_data[0] & 1) != 0;
         let has_impedance: bool = (raw_data[1] & (1 << 1)) != 0;
@@ -50,6 +51,8 @@ impl From<&Vec<u8>> for PacketData {
             _ => Utc::now(), // Fallback to current time if invalid
         };
 
+        let authorization = Authorization::new();
+        let fitbit_api_manager = FitbitApiManager::new(authorization);
         Self {
             weight,
             unit,
@@ -58,6 +61,7 @@ impl From<&Vec<u8>> for PacketData {
             is_stabilized,
             is_weight_removed,
             datetime,
+            fitbit_api_manager,
         }
     }
 }
@@ -66,7 +70,7 @@ impl PacketData {
     pub async fn update_fitbit_weight_data(&self) {
         info!("received data {:?}", self);
         let weight_in_kg: f32 = self.unit_to_kg();
-        let user_data: UserData = match get_user_data().await {
+        let user_data: UserData = match self.fitbit_api_manager.get_user_data().await {
             Ok(response) => response,
             Err(error) => {
                 warn!("Failed to retrieve user data: {error}");
@@ -80,12 +84,20 @@ impl PacketData {
             if self.has_impedance {
                 let body_fat: f32 =
                     self.get_fat_percentage(user_data.gender, user_data.age, user_data.height);
-                match update_body_fat(body_fat, self.datetime).await {
+                match self
+                    .fitbit_api_manager
+                    .update_body_fat(body_fat, self.datetime)
+                    .await
+                {
                     Ok(_) => info!("Body fat has been updated successfully!"),
                     Err(err) => warn!("Failed to update body fat: {err}"),
                 }
             }
-            match update_body_weight(weight_in_kg, self.datetime).await {
+            match self
+                .fitbit_api_manager
+                .update_body_weight(weight_in_kg, self.datetime)
+                .await
+            {
                 Ok(_) => info!("Body weight has been updated successfully!"),
                 Err(err) => warn!("Failed to update body weight: {err}"),
             }
@@ -97,6 +109,7 @@ impl PacketData {
             )
         }
     }
+
     pub fn get_fat_percentage(&self, gender: Gender, age: i8, height: f32) -> f32 {
         let mut constant: f32 = 0.8;
         if gender == Gender::Female {
