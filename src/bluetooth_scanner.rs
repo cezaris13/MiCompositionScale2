@@ -1,7 +1,9 @@
 use crate::cli_error::CliError;
-use crate::packet_data::PacketData;
-use crate::utils::Utils;
+use crate::data_types::packet_data::PacketData;
+use crate::packet_data_processor::IPacketDataProcessor;
+use crate::utils::IUtils;
 
+use async_trait::async_trait;
 use btleplug::api::{Central, CentralEvent, Manager as _};
 use btleplug::platform::{Adapter, Manager, PeripheralId};
 use futures::StreamExt;
@@ -10,20 +12,43 @@ use std::collections::HashMap;
 use std::string::String;
 use uuid::Uuid;
 
-pub struct BluetoothScanner {
-    adapter: Adapter,
+pub struct BluetoothScanner<'a> {
+    packet_data_processor: &'a dyn IPacketDataProcessor,
+    utils: &'a dyn IUtils,
 }
 
-impl BluetoothScanner {
-    pub async fn new() -> Result<Self, CliError> {
-        let adapter = Self::get_adapter().await?;
-        Ok(Self { adapter })
+impl<'a> BluetoothScanner<'a> {
+    pub fn new(
+        packet_data_processor: &'a impl IPacketDataProcessor,
+        utils: &'a impl IUtils,
+    ) -> Self {
+        Self {
+            packet_data_processor,
+            utils,
+        }
     }
+}
 
-    pub async fn start_bluetooth_scanning(&self) -> Result<(), CliError> {
-        let mut events = self.adapter.events().await?;
+#[async_trait]
+pub trait IBluetoothScanner: Sync {
+    async fn start_bluetooth_scanning(&self) -> Result<(), CliError>;
+    async fn process_service_data_advertisement(
+        &self,
+        id: PeripheralId,
+        service_data: HashMap<Uuid, Vec<u8>>,
+        previous_packet: &mut Vec<u8>,
+    ) -> Result<(), CliError>;
+    async fn get_adapter(&self) -> Result<Adapter, CliError>;
+    async fn get_central(&self, manager: &Manager) -> Result<Adapter, CliError>;
+}
 
-        self.adapter
+#[async_trait]
+impl<'a> IBluetoothScanner for BluetoothScanner<'a> {
+    async fn start_bluetooth_scanning(&self) -> Result<(), CliError> {
+        let adapter = self.get_adapter().await?;
+        let mut events = adapter.events().await?;
+
+        adapter
             .start_scan(btleplug::api::ScanFilter::default())
             .await?;
 
@@ -33,12 +58,8 @@ impl BluetoothScanner {
                 CentralEvent::ServiceDataAdvertisement {
                     id, service_data, ..
                 } => {
-                    Self::process_service_data_advertisement(
-                        id,
-                        service_data,
-                        &mut previous_packet,
-                    )
-                    .await?;
+                    self.process_service_data_advertisement(id, service_data, &mut previous_packet)
+                        .await?;
                 }
                 _ => {}
             }
@@ -47,13 +68,14 @@ impl BluetoothScanner {
     }
 
     async fn process_service_data_advertisement(
+        &self,
         id: PeripheralId,
         service_data: HashMap<Uuid, Vec<u8>>,
         previous_packet: &mut Vec<u8>,
     ) -> Result<(), CliError> {
         let search_str = "181b";
         for (uuid, data) in &service_data {
-            // There's only visible mac address in linux (hci0/dev_B4_56_5D_BF_B9_56), on mac os, the id is random guid.
+            // There's only visible mac address in linux (hci0/dev_B4_56_5D_BF_B9_56), on macOS, the id is random guid.
             // Ensuring a bit more security with linux if mac address would not match (some other scales are being used).
             if cfg!(target_os = "linux") {
                 let id_in_str = id.to_string();
@@ -66,7 +88,7 @@ impl BluetoothScanner {
                     }
                     .replace('_', ":");
 
-                    if mac_address != Utils::read_configuration_file()?.mac_address {
+                    if mac_address != self.utils.read_configuration_file()?.mac_address {
                         continue;
                     }
                 } else {
@@ -84,19 +106,21 @@ impl BluetoothScanner {
                 info!("Id: {id} with UUID: {uuid} for data: {:?}", data);
                 let processed_packet = PacketData::from(data);
                 if processed_packet.is_stabilized && !processed_packet.is_weight_removed {
-                    processed_packet.update_fitbit_weight_data().await;
+                    self.packet_data_processor
+                        .update_fitbit_weight_data(processed_packet)
+                        .await;
                 }
             }
         }
         Ok(())
     }
 
-    async fn get_adapter() -> Result<Adapter, CliError> {
+    async fn get_adapter(&self) -> Result<Adapter, CliError> {
         let manager = Manager::new().await?;
-        Self::get_central(&manager).await
+        self.get_central(&manager).await
     }
 
-    async fn get_central(manager: &Manager) -> Result<Adapter, CliError> {
+    async fn get_central(&self, manager: &Manager) -> Result<Adapter, CliError> {
         let adapters = manager.adapters().await?;
 
         match adapters.into_iter().nth(0) {

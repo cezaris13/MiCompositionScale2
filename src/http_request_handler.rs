@@ -1,11 +1,25 @@
 use crate::cli_error::CliError;
 
+use async_trait::async_trait;
 use reqwest::{Error, Response, StatusCode};
 
 pub struct HttpRequestHandler;
 
 impl HttpRequestHandler {
-    pub fn handle_http_request(response: Result<Response, Error>) -> Result<Response, CliError> {
+    pub fn new() -> Self {
+        Self {}
+    }
+}
+
+#[async_trait]
+pub trait IHttpRequestHandler: Sync {
+    fn handle_http_request(&self, response: Result<Response, Error>) -> Result<Response, CliError>;
+    async fn get_response_body(&self, response: Response) -> Result<String, CliError>;
+}
+
+#[async_trait]
+impl IHttpRequestHandler for HttpRequestHandler {
+    fn handle_http_request(&self, response: Result<Response, Error>) -> Result<Response, CliError> {
         match response {
             // fix this
             Ok(resp) => match resp.status() {
@@ -20,7 +34,7 @@ impl HttpRequestHandler {
         }
     }
 
-    pub async fn get_response_body(response: Response) -> Result<String, CliError> {
+    async fn get_response_body(&self, response: Response) -> Result<String, CliError> {
         match response.text().await {
             Ok(text) => Ok(text),
             Err(_) => Err(CliError::Error(String::from(

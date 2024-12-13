@@ -57,7 +57,7 @@ macro_rules! from_error {
 
 from_error!(serde_json::Error, CliError::ParseError);
 from_error!(btleplug::Error, CliError::BluetoothError);
-from_error!(std::string::String, CliError::Error);
+from_error!(String, CliError::Error);
 from_error!(oauth2::url::ParseError, CliError::OAuthError);
 from_error!(std::io::Error, CliError::IOError);
 from_error!(jsonwebtokens::error::Error, CliError::JsonWebTokenError);

@@ -4,23 +4,35 @@ mod cli_error;
 mod data_types;
 mod fitbit_api_manager;
 mod http_request_handler;
-mod packet_data;
+mod packet_data_processor;
 mod utils;
 
-use authorization::Authorization;
-use bluetooth_scanner::BluetoothScanner;
-use data_types::Config;
-use utils::Utils;
-
+use authorization::{Authorization, IAuthorization};
+use bluetooth_scanner::{BluetoothScanner, IBluetoothScanner};
+use data_types::config::Config;
+use fitbit_api_manager::FitbitApiManager;
+use http_request_handler::HttpRequestHandler;
+use packet_data_processor::PacketDataProcessor;
+use reqwest::Client;
 use std::error::Error;
+use utils::{IUtils, Utils};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
     env_logger::init();
-    let bluetooth_scanner = BluetoothScanner::new().await?;
-    let authorization = Authorization::new();
+    let utils = Utils::new();
+    let http_request_handler = HttpRequestHandler::new();
 
-    let config: Config = Utils::read_configuration_file()?;
+    let authorization = Authorization::new(&utils, &http_request_handler);
+
+    let http_client: Client = Client::new();
+    let fitbit_api_manager =
+        FitbitApiManager::new(&authorization, &http_request_handler, &http_client);
+
+    let packet_data_processor = PacketDataProcessor::new(&fitbit_api_manager);
+    let bluetooth_scanner = BluetoothScanner::new(&packet_data_processor, &utils);
+
+    let config: Config = utils.read_configuration_file()?;
 
     if !authorization.file_exists()? {
         let client_id: String = config.client_id;
