@@ -4,6 +4,10 @@ use crate::data_types::config::Config;
 use serde_json::from_str;
 use std::{env, path::PathBuf};
 
+#[cfg(test)]
+#[path = "./tests/utils_tests.rs"]
+mod tests;
+
 const CONFIG_FILE: &str = "variables.json";
 
 pub struct Utils;

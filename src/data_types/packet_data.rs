@@ -1,6 +1,10 @@
 use crate::data_types::gender::Gender;
 use crate::data_types::mass_unit::MassUnit;
 
+#[cfg(test)]
+#[path = "../tests/data_types/packet_data_tests.rs"]
+mod tests;
+
 use chrono::{DateTime, LocalResult, TimeZone, Utc};
 
 #[derive(Debug)]

@@ -27,13 +27,19 @@ const TOKEN_FILE: &str = "auth_token.json";
 pub struct Authorization<'a> {
     utils: &'a dyn IUtils,
     http_request_handler: &'a dyn IHttpRequestHandler,
+    http_client: &'a Client,
 }
 
 impl<'a> Authorization<'a> {
-    pub fn new(utils: &'a impl IUtils, http_request_handler: &'a impl IHttpRequestHandler) -> Self {
+    pub fn new(
+        utils: &'a impl IUtils,
+        http_request_handler: &'a impl IHttpRequestHandler,
+        http_client: &'a Client,
+    ) -> Self {
         Self {
             utils,
             http_request_handler,
+            http_client,
         }
     }
 }
@@ -112,8 +118,8 @@ impl<'a> IAuthorization for Authorization<'a> {
         ];
         let url: Url = Url::parse_with_params("https://api.fitbit.com/oauth2/token", &params)?;
 
-        let client: Client = Client::new();
-        let response = client
+        let response = self
+            .http_client
             .post(url)
             .header(AUTHORIZATION, format!("Basic {}", encoded_client_data))
             .header(CONTENT_TYPE, "application/x-www-form-urlencoded")

@@ -5,6 +5,10 @@ use crate::fitbit_api_manager::IFitbitApiManager;
 use async_trait::async_trait;
 use log::{info, warn};
 
+#[cfg(test)]
+#[path = "./tests/packet_data_processor_tests.rs"]
+mod tests;
+
 pub struct PacketDataProcessor<'a> {
     fitbit_api_manager: &'a dyn IFitbitApiManager,
 }

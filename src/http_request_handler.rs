@@ -3,6 +3,10 @@ use crate::cli_error::CliError;
 use async_trait::async_trait;
 use reqwest::{Error, Response, StatusCode};
 
+#[cfg(test)]
+#[path = "./tests/http_request_handler_tests.rs"]
+mod tests;
+
 pub struct HttpRequestHandler;
 
 impl HttpRequestHandler {

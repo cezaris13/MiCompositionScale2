@@ -22,10 +22,10 @@ async fn main() -> Result<(), Box<dyn Error>> {
     env_logger::init();
     let utils = Utils::new();
     let http_request_handler = HttpRequestHandler::new();
-
-    let authorization = Authorization::new(&utils, &http_request_handler);
-
     let http_client: Client = Client::new();
+
+    let authorization = Authorization::new(&utils, &http_request_handler, &http_client);
+
     let fitbit_api_manager =
         FitbitApiManager::new(&authorization, &http_request_handler, &http_client);
 

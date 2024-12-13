@@ -9,6 +9,10 @@ use reqwest::{header::AUTHORIZATION, Client, Error, Response, Url};
 use serde_json::from_str;
 use std::string::String;
 
+#[cfg(test)]
+#[path = "./tests/fitbit_api_manager_tests.rs"]
+mod tests;
+
 pub struct FitbitApiManager<'a> {
     authorization: &'a dyn IAuthorization,
     http_request_handler: &'a dyn IHttpRequestHandler,
