@@ -1,6 +1,7 @@
 use crate::cli_error::CliError;
 
 use async_trait::async_trait;
+use mockall::{automock, predicate::*};
 use reqwest::{Error, Response, StatusCode};
 
 #[cfg(test)]
@@ -15,6 +16,7 @@ impl HttpRequestHandler {
     }
 }
 
+#[automock]
 #[async_trait]
 pub trait IHttpRequestHandler: Sync {
     fn handle_http_request(&self, response: Result<Response, Error>) -> Result<Response, CliError>;

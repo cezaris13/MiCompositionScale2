@@ -7,6 +7,7 @@ use async_trait::async_trait;
 use base64::{prelude::BASE64_STANDARD, Engine};
 use jsonwebtokens::raw::{self, decode_json_token_slice, TokenSlices};
 use log::{error, info};
+use mockall::{automock, predicate::*};
 use oauth2::basic::BasicClient;
 use oauth2::reqwest::async_http_client;
 use oauth2::url::Url;
@@ -18,7 +19,6 @@ use reqwest::Client;
 use serde_json::{from_str, from_value};
 use std::fs::{self, File};
 use std::io::{BufRead, BufReader, Write};
-
 use std::net::TcpListener;
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -44,6 +44,7 @@ impl<'a> Authorization<'a> {
     }
 }
 
+#[automock]
 #[async_trait]
 pub trait IAuthorization: Sync {
     async fn get_auth_token(&self, client_id: String, secret: String) -> Result<(), CliError>;

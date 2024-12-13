@@ -5,6 +5,7 @@ use crate::http_request_handler::IHttpRequestHandler;
 
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
+use mockall::{automock, predicate::*};
 use reqwest::{header::AUTHORIZATION, Client, Error, Response, Url};
 use serde_json::from_str;
 use std::string::String;
@@ -33,6 +34,7 @@ impl<'a> FitbitApiManager<'a> {
     }
 }
 
+#[automock]
 #[async_trait]
 pub trait IFitbitApiManager: Sync {
     async fn get_user_data(&self) -> Result<UserData, CliError>;
