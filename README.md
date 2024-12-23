@@ -1,4 +1,4 @@
-Get Xiaomi Mi Composition Scale 2 weight and publishing to fitbit
+Get Xiaomi Mi Composition Scale 2 weight, body fat and publish it to fitbit via FitbitApi.
 
 ## Requirements
 
