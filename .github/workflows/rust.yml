@@ -17,7 +17,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Install dependencies via make install
-      run: make install
+      run: sudo make install
     - name: Build
       run: cargo build --verbose
     - name: Run tests
