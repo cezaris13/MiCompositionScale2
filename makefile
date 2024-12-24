@@ -35,7 +35,7 @@ install:
 ifeq ($(shell uname ),Linux)
 	apt-get install pkg-config libssl-dev libdbus-1-dev
 endif
-	curl https://sh.rustup.rs -sSf | sh -y 
+	curl https://sh.rustup.rs -sSf | sh -s -- -y
 	cargo install cargo-edit
 	cargo build
 
