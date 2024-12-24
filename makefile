@@ -36,9 +36,9 @@ ifeq ($(shell uname ),Linux)
 	apt-get install pkg-config libssl-dev libdbus-1-dev
 endif
 	curl https://sh.rustup.rs -sSf | sh -s -- -y
-        . "$HOME/.cargo/env"
+	. "${HOME}/.cargo/env"
 	cargo install cargo-edit
 	cargo build
 
-upgrade-dependencied:
+upgrade-dependencies:
 	cargo upgrade
