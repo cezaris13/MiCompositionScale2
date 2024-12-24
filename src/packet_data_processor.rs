@@ -27,7 +27,7 @@ pub trait IPacketDataProcessor: Sync {
 #[async_trait]
 impl<'a> IPacketDataProcessor for PacketDataProcessor<'a> {
     async fn update_fitbit_weight_data(&self, packet_data: PacketData) {
-        info!("received data {:?}", packet_data);
+        info!("Received data {:?}", packet_data);
         let weight_in_kg: f32 = packet_data.unit_to_kg();
         let user_data: UserData = match self.fitbit_api_manager.get_user_data().await {
             Ok(response) => response,
