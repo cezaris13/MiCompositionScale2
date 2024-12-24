@@ -166,10 +166,6 @@ mod tests {
             .expect_handle_http_request()
             .returning(|_| Ok(mock_response(StatusCode::OK, response_body)));
 
-        mock_http_request_handler
-            .expect_get_response_body()
-            .returning(|_| Ok(test_user_data()));
-
         let sut = FitbitApiManager::new(
             &mock_authorization,
             &mock_http_request_handler,
@@ -182,6 +178,77 @@ mod tests {
         let response = response.unwrap();
 
         assert_eq!(response.text().await.unwrap(), response_body);
+    }
+
+    #[tokio::test]
+    async fn test_update_user_body_fat_authorization_token_retrieval_fails_returns_error() {
+        let mut mock_authorization = MockIAuthorization::new();
+        let mock_http_request_handler = MockIHttpRequestHandler::new();
+        let mock_client = reqwest::Client::new();
+
+        mock_authorization
+            .expect_get_access_token()
+            .returning(|| Err(CliError::Error(String::from("test_token"))));
+
+        let sut = FitbitApiManager::new(
+            &mock_authorization,
+            &mock_http_request_handler,
+            &mock_client,
+        );
+
+        let response = sut.update_body_fat(20.0, Utc::now()).await;
+
+        assert!(response.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_update_user_body_weight_success() {
+        let mut mock_authorization = MockIAuthorization::new();
+        let mut mock_http_request_handler = MockIHttpRequestHandler::new();
+        let mock_client = reqwest::Client::new();
+
+        mock_authorization
+            .expect_get_access_token()
+            .returning(|| Ok("test_token".to_string()));
+
+        let response_body = "some data";
+        mock_http_request_handler
+            .expect_handle_http_request()
+            .returning(|_| Ok(mock_response(StatusCode::OK, response_body)));
+
+        let sut = FitbitApiManager::new(
+            &mock_authorization,
+            &mock_http_request_handler,
+            &mock_client,
+        );
+
+        let response = sut.update_body_weight(80.0, Utc::now()).await;
+
+        assert!(response.is_ok());
+        let response = response.unwrap();
+
+        assert_eq!(response.text().await.unwrap(), response_body);
+    }
+
+    #[tokio::test]
+    async fn test_update_user_body_weight_authorization_token_retrieval_fails_returns_error() {
+        let mut mock_authorization = MockIAuthorization::new();
+        let mock_http_request_handler = MockIHttpRequestHandler::new();
+        let mock_client = reqwest::Client::new();
+
+        mock_authorization
+            .expect_get_access_token()
+            .returning(|| Err(CliError::Error(String::from("test_token"))));
+
+        let sut = FitbitApiManager::new(
+            &mock_authorization,
+            &mock_http_request_handler,
+            &mock_client,
+        );
+
+        let response = sut.update_body_weight(80.0, Utc::now()).await;
+
+        assert!(response.is_err());
     }
 
     fn mock_response(status: StatusCode, body: &str) -> Response {
