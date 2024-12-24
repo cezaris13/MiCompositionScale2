@@ -7,7 +7,7 @@ pub struct User {
     pub user: UserData,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct UserData {
     pub gender: Gender,
     pub age: i8,

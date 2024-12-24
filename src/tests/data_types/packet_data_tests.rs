@@ -91,7 +91,7 @@ mod tests {
         };
 
         let fat_percentage = packet_data.get_fat_percentage(Gender::Male, 30, 175.0);
-        assert!(fat_percentage >= 5.0 && fat_percentage <= 75.0);
+        assert_eq!(fat_percentage, 19.2283993);
     }
 
     #[test]
@@ -107,7 +107,7 @@ mod tests {
         };
 
         let fat_percentage = packet_data.get_fat_percentage(Gender::Female, 25, 160.0);
-        assert!(fat_percentage >= 5.0 && fat_percentage <= 75.0);
+        assert_eq!(fat_percentage, 31.7508698);
     }
 
     #[test]
@@ -123,7 +123,7 @@ mod tests {
         };
 
         let fat_percentage = packet_data.get_fat_percentage(Gender::Female, 20, 165.0);
-        assert!(fat_percentage >= 5.0 && fat_percentage <= 75.0);
+        assert_eq!(fat_percentage, 25.2865372);
     }
 
     #[test]
@@ -139,7 +139,7 @@ mod tests {
         };
 
         let fat_percentage = packet_data.get_fat_percentage(Gender::Female, 50, 165.0);
-        assert!(fat_percentage >= 5.0 && fat_percentage <= 75.0);
+        assert_eq!(fat_percentage, 24.6065369);
     }
 
     #[test]
@@ -155,7 +155,7 @@ mod tests {
         };
 
         let fat_percentage = packet_data.get_fat_percentage(Gender::Male, 30, 175.0);
-        assert!(fat_percentage >= 5.0 && fat_percentage <= 75.0);
+        assert_eq!(fat_percentage, 5.0);
     }
 
     #[test]
@@ -171,7 +171,7 @@ mod tests {
         };
 
         let fat_percentage = packet_data.get_fat_percentage(Gender::Male, 40, 180.0);
-        assert!(fat_percentage >= 5.0 && fat_percentage <= 75.0);
+        assert_eq!(fat_percentage, 25.6926117);
     }
 
     #[test]
@@ -188,8 +188,9 @@ mod tests {
 
         let fat_percentage_tall = packet_data.get_fat_percentage(Gender::Male, 30, 200.0);
         let fat_percentage_short = packet_data.get_fat_percentage(Gender::Male, 30, 140.0);
-        assert!(fat_percentage_tall >= 5.0 && fat_percentage_tall <= 75.0);
-        assert!(fat_percentage_short >= 5.0 && fat_percentage_short <= 75.0);
+
+        assert_eq!(fat_percentage_tall, 11.1573458);
+        assert_eq!(fat_percentage_short, 35.7950974);
     }
 
     #[test]

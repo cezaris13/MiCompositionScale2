@@ -5,6 +5,8 @@ mod data_types;
 mod fitbit_api_manager;
 mod http_request_handler;
 mod packet_data_processor;
+#[cfg(test)]
+mod tests;
 mod utils;
 
 use authorization::{Authorization, IAuthorization};
