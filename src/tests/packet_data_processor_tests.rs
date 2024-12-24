@@ -257,10 +257,7 @@ mod tests {
     }
 
     fn get_test_packet_data(has_impedance: Option<bool>) -> PacketData {
-        let has_impedance = match has_impedance {
-            Some(has_impedance) => has_impedance,
-            None => true,
-        };
+        let has_impedance = has_impedance.unwrap_or_else(|| true);
 
         PacketData {
             weight: 70.0,
@@ -274,10 +271,7 @@ mod tests {
     }
 
     fn get_test_user_data(sample_weight: Option<f32>) -> UserData {
-        let weight = match sample_weight {
-            Some(weight) => weight,
-            None => 70.2,
-        };
+        let weight = sample_weight.unwrap_or_else(|| 70.2);
 
         UserData {
             gender: Gender::Male,

@@ -3,6 +3,10 @@ use serde_json;
 use std::error;
 use std::fmt;
 
+#[cfg(test)]
+#[path = "./tests/cli_error_tests.rs"]
+mod tests;
+
 #[derive(Debug)]
 pub enum CliError {
     Error(String),
