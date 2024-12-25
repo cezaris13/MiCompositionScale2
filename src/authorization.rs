@@ -126,7 +126,7 @@ impl<'a> IAuthorization for Authorization<'a> {
         let response = self
             .http_client
             .post(url)
-            .header(AUTHORIZATION, format!("Basic {}", encoded_client_data))
+            .header(AUTHORIZATION, format!("Basic {encoded_client_data}"))
             .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
             .send()
             .await;

@@ -32,8 +32,7 @@ impl IHttpRequestHandler for HttpRequestHandler {
                 StatusCode::OK => Ok(resp),
                 StatusCode::CREATED => Ok(resp),
                 status_code => Err(CliError::Error(format!(
-                    "failed to get data from the request: status code {}",
-                    status_code
+                    "Failed to get data from the request: status code {status_code}"
                 ))),
             },
             Err(err) => Err(CliError::Error(err.to_string())),

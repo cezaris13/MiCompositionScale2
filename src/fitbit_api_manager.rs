@@ -60,7 +60,7 @@ impl<'a> IFitbitApiManager for FitbitApiManager<'a> {
         let response = self
             .http_client
             .get("https://api.fitbit.com/1/user/-/profile.json")
-            .header(AUTHORIZATION, format!("Bearer {}", access_token))
+            .header(AUTHORIZATION, format!("Bearer {access_token}"))
             .send()
             .await;
 
@@ -93,7 +93,7 @@ impl<'a> IFitbitApiManager for FitbitApiManager<'a> {
         let response = self
             .http_client
             .post(url)
-            .header(AUTHORIZATION, format!("Bearer {}", access_token))
+            .header(AUTHORIZATION, format!("Bearer {access_token}"))
             .send()
             .await;
 
@@ -120,7 +120,7 @@ impl<'a> IFitbitApiManager for FitbitApiManager<'a> {
         let response: Result<Response, Error> = self
             .http_client
             .post(url)
-            .header(AUTHORIZATION, format!("Bearer {}", access_token))
+            .header(AUTHORIZATION, format!("Bearer {access_token}"))
             .send()
             .await;
 

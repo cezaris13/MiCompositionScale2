@@ -21,7 +21,7 @@ mod tests {
         let json_error1 = serde_json::from_str::<User>("some random").err().unwrap();
         assert_eq!(
             format!("{}", CliError::ParseError(json_error)),
-            format!("Parse error: {}", json_error1)
+            format!("Parse error: {json_error1}")
         );
 
         assert_eq!(
@@ -32,21 +32,21 @@ mod tests {
         let oauth_error = oauth2::url::ParseError::RelativeUrlWithoutBase;
         assert_eq!(
             format!("{}", CliError::OAuthError(oauth_error.clone())),
-            format!("OAuth error in program: {}", oauth_error)
+            format!("OAuth error in program: {oauth_error}")
         );
 
         let io_error = io::Error::new(io::ErrorKind::Other, "IO test error");
         let io_error1 = io::Error::new(io::ErrorKind::Other, "IO test error");
         assert_eq!(
             format!("{}", CliError::IOError(io_error)),
-            format!("IO error in program: {}", io_error1)
+            format!("IO error in program: {io_error1}")
         );
 
         let jwt_error = jsonwebtokens::error::Error::InvalidSignature();
         let jwt_error1 = jsonwebtokens::error::Error::InvalidSignature();
         assert_eq!(
             format!("{}", CliError::JsonWebTokenError(jwt_error)),
-            format!("JsonWebToken error: {}", jwt_error1)
+            format!("JsonWebToken error: {jwt_error1}")
         );
 
         let io_error = io::Error::new(io::ErrorKind::Other, "IO test error");
@@ -55,7 +55,7 @@ mod tests {
         let opener_error1 = opener::OpenError::Io(io_error1);
         assert_eq!(
             format!("{}", CliError::OpenerError(opener_error)),
-            format!("Opener error: {}", opener_error1)
+            format!("Opener error: {opener_error1}")
         );
 
         let now = SystemTime::now();

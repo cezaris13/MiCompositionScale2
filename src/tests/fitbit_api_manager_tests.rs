@@ -52,9 +52,10 @@ mod tests {
         let mock_http_request_handler = MockIHttpRequestHandler::new();
         let mock_client = reqwest::Client::new();
 
+        let error_message = "some error";
         mock_authorization
             .expect_get_access_token()
-            .returning(|| Err(CliError::Error(String::from("test_token"))));
+            .returning(move || Err(CliError::Error(String::from(error_message))));
 
         let sut = FitbitApiManager::new(
             &mock_authorization,
@@ -65,6 +66,14 @@ mod tests {
         let user_data = sut.get_user_data().await;
 
         assert!(user_data.is_err());
+        if let Err(CliError::Error(ref message)) = user_data {
+            assert_eq!(message, error_message);
+        } else {
+            assert!(
+                false,
+                "Expected error: CliError::Error(\"some error\"), but got a different result"
+            );
+        }
     }
 
     #[tokio::test]
@@ -73,13 +82,14 @@ mod tests {
         let mut mock_http_request_handler = MockIHttpRequestHandler::new();
         let mock_client = reqwest::Client::new();
 
+        let error_message = "some error";
         mock_authorization
             .expect_get_access_token()
             .returning(|| Ok("test_token".to_string()));
 
         mock_http_request_handler
             .expect_handle_http_request()
-            .returning(|_| Err(CliError::Error(String::from("some error"))));
+            .returning(move |_| Err(CliError::Error(String::from(error_message))));
 
         let sut = FitbitApiManager::new(
             &mock_authorization,
@@ -90,6 +100,14 @@ mod tests {
         let user_data = sut.get_user_data().await;
 
         assert!(user_data.is_err());
+        if let Err(CliError::Error(ref message)) = user_data {
+            assert_eq!(message, error_message);
+        } else {
+            assert!(
+                false,
+                "Expected error: CliError::Error(\"some error\"), but got a different result"
+            );
+        }
     }
 
     #[tokio::test]
@@ -98,6 +116,7 @@ mod tests {
         let mut mock_http_request_handler = MockIHttpRequestHandler::new();
         let mock_client = reqwest::Client::new();
 
+        let error_message = "some error";
         mock_authorization
             .expect_get_access_token()
             .returning(|| Ok("test_token".to_string()));
@@ -108,7 +127,7 @@ mod tests {
 
         mock_http_request_handler
             .expect_get_response_body()
-            .returning(|_| Err(CliError::Error(String::from("some error"))));
+            .returning(move |_| Err(CliError::Error(String::from(error_message))));
 
         let sut = FitbitApiManager::new(
             &mock_authorization,
@@ -119,6 +138,14 @@ mod tests {
         let user_data = sut.get_user_data().await;
 
         assert!(user_data.is_err());
+        if let Err(CliError::Error(ref message)) = user_data {
+            assert_eq!(message, error_message);
+        } else {
+            assert!(
+                false,
+                "Expected error: CliError::Error(\"some error\"), but got a different result"
+            );
+        }
     }
 
     #[tokio::test]
@@ -147,7 +174,16 @@ mod tests {
 
         let user_data = sut.get_user_data().await;
 
+        println!("{:?}", user_data);
         assert!(user_data.is_err());
+        if let Err(CliError::ParseError(ref message)) = user_data {
+            assert_eq!(format!("{message}"), "expected value at line 1 column 1");
+        } else {
+            assert!(
+                false,
+                "Expected error: CliError::Error(\"some error\"), but got a different result"
+            );
+        }
     }
 
     #[tokio::test]
@@ -185,9 +221,10 @@ mod tests {
         let mock_http_request_handler = MockIHttpRequestHandler::new();
         let mock_client = reqwest::Client::new();
 
+        let error_message = "some error";
         mock_authorization
             .expect_get_access_token()
-            .returning(|| Err(CliError::Error(String::from("test_token"))));
+            .returning(move || Err(CliError::Error(String::from(error_message))));
 
         let sut = FitbitApiManager::new(
             &mock_authorization,
@@ -198,6 +235,14 @@ mod tests {
         let response = sut.update_body_fat(20.0, Utc::now()).await;
 
         assert!(response.is_err());
+        if let Err(CliError::Error(ref message)) = response {
+            assert_eq!(message, error_message);
+        } else {
+            assert!(
+                false,
+                "Expected error: CliError::Error(\"some error\"), but got a different result"
+            );
+        }
     }
 
     #[tokio::test]
@@ -235,9 +280,10 @@ mod tests {
         let mock_http_request_handler = MockIHttpRequestHandler::new();
         let mock_client = reqwest::Client::new();
 
+        let error_message = "some error";
         mock_authorization
             .expect_get_access_token()
-            .returning(|| Err(CliError::Error(String::from("test_token"))));
+            .returning(move || Err(CliError::Error(String::from(error_message))));
 
         let sut = FitbitApiManager::new(
             &mock_authorization,
@@ -248,6 +294,14 @@ mod tests {
         let response = sut.update_body_weight(80.0, Utc::now()).await;
 
         assert!(response.is_err());
+        if let Err(CliError::Error(ref message)) = response {
+            assert_eq!(message, error_message);
+        } else {
+            assert!(
+                false,
+                "Expected error: CliError::Error(\"some error\"), but got a different result"
+            );
+        }
     }
 
     fn test_user_data() -> String {

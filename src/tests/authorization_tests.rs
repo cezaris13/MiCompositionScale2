@@ -6,10 +6,17 @@ mod tests {
     use crate::data_types::token::Token;
     use crate::http_request_handler::MockIHttpRequestHandler;
     // use crate::tests::mock_response_builder::mock_response;
+    use crate::authorization::TOKEN_FILE;
+    use crate::cli_error::CliError;
+    use crate::tests::vector_logger::LOGGER;
     use crate::utils::MockIUtils;
-    use crate::utils::Utils;
+    use crate::utils::{IUtils, Utils};
+
+    use serial_test::serial;
+    use std::fs;
 
     #[tokio::test]
+    #[serial]
     async fn test_get_auth_token() {
         // let mut mock_utils = MockIUtils::new();
         // let mut mock_http_handler = MockIHttpRequestHandler::new();
@@ -48,6 +55,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial]
     async fn test_write_auth_token_invalid_dir_returns_error() {
         let mut mock_utils = MockIUtils::new();
         let mock_client = reqwest::Client::new();
@@ -58,8 +66,8 @@ mod tests {
             .returning(|| Ok(String::from("/mock/directory")));
 
         let token = Token {
-            access_token: String::from("mock_access_token"),
-            refresh_token: String::from("mock_refresh_token"),
+            access_token: String::from("mocked_access_token"),
+            refresh_token: String::from("mocked_refresh_token"),
         };
 
         let sut = Authorization {
@@ -70,17 +78,32 @@ mod tests {
         let result = sut.write_auth_token(token);
 
         assert!(result.is_err());
+
+        if let Err(CliError::IOError(ref error)) = result {
+            assert_eq!(
+                format!("{:?}", error),
+                String::from(
+                    "Os { code: 2, kind: NotFound, message: \"No such file or directory\" }"
+                )
+            );
+        } else {
+            assert!(
+                false,
+                "Expected error: CliError::IOError(\"some error\"), but got a different result"
+            );
+        }
     }
 
     #[tokio::test]
+    #[serial]
     async fn test_write_auth_token_writes_token_to_file() {
         let mock_utils = Utils::new();
         let mock_client = reqwest::Client::new();
         let mock_http_handler = MockIHttpRequestHandler::new();
 
         let token = Token {
-            access_token: String::from("mock_access_token"),
-            refresh_token: String::from("mock_refresh_token"),
+            access_token: String::from("mocked_access_token"),
+            refresh_token: String::from("mocked_refresh_token"),
         };
 
         let sut = Authorization {
@@ -90,10 +113,50 @@ mod tests {
         };
         let result = sut.write_auth_token(token);
 
+        let _ =
+            fs::remove_file(mock_utils.get_current_project_directory().unwrap() + "/" + TOKEN_FILE);
         assert!(result.is_ok());
     }
 
     #[tokio::test]
+    #[serial]
+    async fn test_write_auth_token_current_dir_error_returns_error() {
+        let mut mock_utils = MockIUtils::new();
+
+        let error_message = "some error";
+        mock_utils
+            .expect_get_current_project_directory()
+            .returning(move || Err(CliError::Error(String::from(error_message))));
+
+        let mock_client = reqwest::Client::new();
+        let mock_http_handler = MockIHttpRequestHandler::new();
+
+        let token = Token {
+            access_token: String::from("mocked_access_token"),
+            refresh_token: String::from("mocked_refresh_token"),
+        };
+
+        let sut = Authorization {
+            utils: &mock_utils,
+            http_request_handler: &mock_http_handler,
+            http_client: &mock_client,
+        };
+        let result = sut.write_auth_token(token);
+
+        assert!(result.is_err());
+
+        if let Err(CliError::Error(ref message)) = result {
+            assert_eq!(message, error_message);
+        } else {
+            assert!(
+                false,
+                "Expected error: CliError::Error(\"some error\"), but got a different result"
+            );
+        }
+    }
+
+    #[tokio::test]
+    #[serial]
     async fn test_file_exists_random_dir_returns_false() {
         let mut mock_utils = MockIUtils::new();
         let mock_client = reqwest::Client::new();
@@ -111,6 +174,147 @@ mod tests {
         let result = sut.file_exists();
         assert!(result.is_ok());
         assert!(!result.unwrap());
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_file_exists_get_current_dir_fails_returns_error() {
+        let mut mock_utils = MockIUtils::new();
+        let mock_client = reqwest::Client::new();
+        let mock_http_handler = MockIHttpRequestHandler::new();
+
+        let error_message = "some error";
+        mock_utils
+            .expect_get_current_project_directory()
+            .returning(move || Err(CliError::Error(String::from(error_message))));
+
+        let sut = Authorization {
+            utils: &mock_utils,
+            http_request_handler: &mock_http_handler,
+            http_client: &mock_client,
+        };
+        let result = sut.file_exists();
+
+        assert!(result.is_err());
+
+        if let Err(CliError::Error(ref message)) = result {
+            assert_eq!(message, error_message);
+        } else {
+            assert!(
+                false,
+                "Expected error: CliError::Error(\"some error\"), but got a different result"
+            );
+        }
+    }
+
+    #[test]
+    #[serial]
+    fn test_read_auth_token_success() {
+        LOGGER.clear_logs();
+        let logger_ref = LOGGER.clone();
+
+        let mock_client = reqwest::Client::new();
+        let mock_http_handler = MockIHttpRequestHandler::new();
+        let utils = Utils::new();
+
+        let token_str =
+            "{\"access_token\":\"mocked_access_token\",\"refresh_token\":\"mocked_refresh_token\"}";
+
+        // Create a mock file with the token content
+        let token_file_path = utils.get_current_project_directory().unwrap() + "/" + TOKEN_FILE;
+
+        let _ = fs::write(token_file_path.clone(), token_str);
+
+        // Mock function call
+        let sut = Authorization {
+            utils: &utils,
+            http_request_handler: &mock_http_handler,
+            http_client: &mock_client,
+        };
+
+        let result = sut.read_auth_token();
+
+        // Clean up the test file
+        let _ = fs::remove_file(token_file_path);
+
+        assert!(result.is_ok());
+        assert_eq!(result.as_ref().unwrap().access_token, "mocked_access_token");
+        assert_eq!(result.unwrap().refresh_token, "mocked_refresh_token");
+
+        let logs = logger_ref.get_logs();
+        assert_eq!(logs.len(), 0);
+    }
+
+    #[test]
+    #[serial]
+    fn test_read_auth_token_file_not_found() {
+        LOGGER.clear_logs();
+        let logger_ref = LOGGER.clone();
+
+        let mock_client = reqwest::Client::new();
+        let mock_http_handler = MockIHttpRequestHandler::new();
+
+        let mut mock_utils = MockIUtils::new();
+        mock_utils
+            .expect_get_current_project_directory()
+            .returning(|| Ok(String::from("/mock/directory")));
+
+        // Mock function call
+        let sut = Authorization {
+            utils: &mock_utils,
+            http_request_handler: &mock_http_handler,
+            http_client: &mock_client,
+        };
+
+        let result = sut.read_auth_token();
+
+        assert!(result.is_err());
+        assert_eq!(
+            result.err().unwrap().to_string(),
+            "Error in program: Failed to read the auth token.\nHave you run the `auth` command?"
+        );
+
+        let logs = logger_ref.get_logs();
+        assert_eq!(logs.len(), 1);
+
+        assert_eq!(logs[0], "[ERROR] Failed to read the auth token (No such file or directory (os error 2))\nHave you run the `auth` command?");
+    }
+
+    #[test]
+    #[serial]
+    fn test_read_auth_token_invalid_json() {
+        LOGGER.clear_logs();
+        let logger_ref = LOGGER.clone();
+
+        let mock_client = reqwest::Client::new();
+        let mock_http_handler = MockIHttpRequestHandler::new();
+        let utils = Utils::new();
+
+        let invalid_token_str = "invalid_token_content";
+
+        // Create a mock file with invalid token content
+        let token_file_path = utils.get_current_project_directory().unwrap() + "/" + TOKEN_FILE;
+        let _ = fs::write(token_file_path.clone(), invalid_token_str);
+
+        // Mock function call
+        let sut = Authorization {
+            utils: &utils,
+            http_request_handler: &mock_http_handler,
+            http_client: &mock_client,
+        };
+        let result = sut.read_auth_token();
+
+        // Clean up the test file
+        let _ = fs::remove_file(token_file_path);
+
+        assert!(result.is_err());
+        assert_eq!(
+            result.err().unwrap().to_string(),
+            "Parse error: expected value at line 1 column 1"
+        );
+
+        let logs = logger_ref.get_logs();
+        assert_eq!(logs.len(), 0);
     }
 
     // #[tokio::test]

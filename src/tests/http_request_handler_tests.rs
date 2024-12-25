@@ -1,5 +1,6 @@
 #[cfg(test)]
 mod tests {
+    use crate::cli_error::CliError;
     use crate::http_request_handler::HttpRequestHandler;
     use crate::http_request_handler::IHttpRequestHandler;
     use crate::tests::mock_response_builder::mock_response;
@@ -39,6 +40,17 @@ mod tests {
         let result = handler.handle_http_request(Ok(response));
 
         assert!(result.is_err());
+        if let Err(CliError::Error(ref message)) = result {
+            assert_eq!(
+                message,
+                "Failed to get data from the request: status code 400 Bad Request"
+            );
+        } else {
+            assert!(
+                false,
+                "Expected error: CliError::Error(\"some error\"), but got a different result"
+            );
+        }
     }
 
     #[test]
@@ -49,6 +61,17 @@ mod tests {
         let result = sut.handle_http_request(response);
 
         assert!(result.is_err());
+        if let Err(CliError::Error(ref message)) = result {
+            assert_eq!(
+                message,
+                "HTTP status client error (400 Bad Request) for url (http://no.url.provided.local/)"
+            );
+        } else {
+            assert!(
+                false,
+                "Expected error: CliError::Error(\"some error\"), but got a different result"
+            );
+        }
     }
 
     #[tokio::test]
