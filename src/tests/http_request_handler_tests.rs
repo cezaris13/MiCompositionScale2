@@ -2,9 +2,9 @@
 mod tests {
     use crate::http_request_handler::HttpRequestHandler;
     use crate::http_request_handler::IHttpRequestHandler;
+    use crate::tests::mock_response_builder::mock_response;
 
-    use http::Response as HttpResponse;
-    use reqwest::{Response, StatusCode};
+    use reqwest::StatusCode;
 
     #[tokio::test]
     async fn test_handle_http_request_ok_status() {
@@ -60,14 +60,5 @@ mod tests {
 
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), "response body");
-    }
-
-    fn mock_response(status: StatusCode, body: &str) -> Response {
-        let response = HttpResponse::builder()
-            .header("Foo", "Bar")
-            .status(status)
-            .body(String::from(body))
-            .unwrap();
-        Response::from(response)
     }
 }

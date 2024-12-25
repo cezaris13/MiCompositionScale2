@@ -1,6 +1,7 @@
 use crate::cli_error::CliError;
 use crate::data_types::config::Config;
 
+use mockall::automock;
 use serde_json::from_str;
 use std::{env, path::PathBuf};
 
@@ -18,6 +19,7 @@ impl Utils {
     }
 }
 
+#[automock]
 pub trait IUtils: Sync {
     fn get_current_project_directory(&self) -> Result<String, CliError>;
     fn read_configuration_file(&self) -> Result<Config, CliError>;

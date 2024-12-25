@@ -22,6 +22,10 @@ use std::io::{BufRead, BufReader, Write};
 use std::net::TcpListener;
 use std::time::{SystemTime, UNIX_EPOCH};
 
+#[cfg(test)]
+#[path = "./tests/authorization_tests.rs"]
+mod tests;
+
 const TOKEN_FILE: &str = "auth_token.json";
 
 pub struct Authorization<'a> {

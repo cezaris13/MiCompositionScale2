@@ -7,11 +7,10 @@ mod tests {
     use crate::fitbit_api_manager::FitbitApiManager;
     use crate::fitbit_api_manager::IFitbitApiManager;
     use crate::http_request_handler::MockIHttpRequestHandler;
+    use crate::tests::mock_response_builder::mock_response;
 
     use chrono::Utc;
-    use http::Response as HttpResponse;
-    use mockall::predicate::*;
-    use reqwest::{Response, StatusCode};
+    use reqwest::StatusCode;
 
     #[tokio::test]
     async fn test_get_user_data_success() {
@@ -249,15 +248,6 @@ mod tests {
         let response = sut.update_body_weight(80.0, Utc::now()).await;
 
         assert!(response.is_err());
-    }
-
-    fn mock_response(status: StatusCode, body: &str) -> Response {
-        let response = HttpResponse::builder()
-            .header("Foo", "Bar")
-            .status(status)
-            .body(String::from(body))
-            .unwrap();
-        Response::from(response)
     }
 
     fn test_user_data() -> String {

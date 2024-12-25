@@ -7,26 +7,13 @@ mod tests {
     use crate::data_types::user::UserData;
     use crate::fitbit_api_manager::MockIFitbitApiManager;
     use crate::packet_data_processor::IPacketDataProcessor;
-    use crate::tests::vector_logger::VectorLogger;
+    use crate::tests::vector_logger::LOGGER;
     use crate::PacketDataProcessor;
 
     use chrono::Utc;
-    use log::LevelFilter;
-    use once_cell::sync::Lazy;
     use reqwest::Response;
     use serial_test::serial;
-    use std::sync::Arc;
 
-    // Define a static logger that will be initialized once.
-    static LOGGER: Lazy<Arc<VectorLogger>> = Lazy::new(|| {
-        let logger = VectorLogger::new();
-        let logger_ref = Arc::new(logger);
-        log::set_boxed_logger(Box::new(logger_ref.clone())).unwrap();
-        log::set_max_level(LevelFilter::Info);
-        logger_ref
-    });
-
-    // Test cases can now use this static logger
     #[tokio::test]
     #[serial]
     async fn test_update_body_data() {
@@ -109,7 +96,7 @@ mod tests {
     #[serial]
     async fn test_weight_is_bigger_than_3_kg_does_not_update() {
         LOGGER.clear_logs();
-        let logger_ref = LOGGER.clone(); // Use the global logger
+        let logger_ref = LOGGER.clone();
 
         let test_weight = 100.0;
         let user_data = get_test_user_data(Some(test_weight));
@@ -145,7 +132,7 @@ mod tests {
     #[serial]
     async fn test_weight_is_smaller_than_3_kg_does_not_update() {
         LOGGER.clear_logs();
-        let logger_ref = LOGGER.clone(); // Use the global logger
+        let logger_ref = LOGGER.clone();
 
         let test_weight = 50.0;
         let user_data = get_test_user_data(Some(test_weight));
@@ -180,7 +167,7 @@ mod tests {
     #[serial]
     async fn test_api_manager_fails_to_get_user_data_returns_warnings() {
         LOGGER.clear_logs();
-        let logger_ref = LOGGER.clone(); // Use the global logger
+        let logger_ref = LOGGER.clone();
 
         let packet_data = get_test_packet_data(None);
 
@@ -210,7 +197,7 @@ mod tests {
     #[serial]
     async fn test_api_manager_fails_update_body_data_returns_warnings() {
         LOGGER.clear_logs();
-        let logger_ref = LOGGER.clone(); // Use the global logger
+        let logger_ref = LOGGER.clone();
 
         let packet_data = get_test_packet_data(None);
         let user_data = get_test_user_data(None);

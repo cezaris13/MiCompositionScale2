@@ -1,4 +1,5 @@
-use log::{Level, Log, Metadata, Record};
+use log::{Level, LevelFilter, Log, Metadata, Record};
+use once_cell::sync::Lazy;
 use std::sync::{Arc, Mutex};
 
 pub struct VectorLogger {
@@ -39,3 +40,11 @@ impl Log for VectorLogger {
         // No-op for this simple implementation
     }
 }
+
+pub static LOGGER: Lazy<Arc<VectorLogger>> = Lazy::new(|| {
+    let logger = VectorLogger::new();
+    let logger_ref = Arc::new(logger);
+    log::set_boxed_logger(Box::new(logger_ref.clone())).unwrap();
+    log::set_max_level(LevelFilter::Info);
+    logger_ref
+});

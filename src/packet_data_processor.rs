@@ -4,6 +4,7 @@ use crate::fitbit_api_manager::IFitbitApiManager;
 
 use async_trait::async_trait;
 use log::{info, warn};
+use mockall::automock;
 
 #[cfg(test)]
 #[path = "./tests/packet_data_processor_tests.rs"]
@@ -19,6 +20,7 @@ impl<'a> PacketDataProcessor<'a> {
     }
 }
 
+#[automock]
 #[async_trait]
 pub trait IPacketDataProcessor: Sync {
     async fn update_fitbit_weight_data(&self, packet_data: PacketData);

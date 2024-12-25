@@ -11,7 +11,7 @@ mod tests {
     fn test_from_vec_u8() {
         let raw_data: Vec<u8> = vec![
             0b00000001, // is_lbs = true
-            0b10100010, // has_impedance = true, is_stabilized = true, is_weight_removed = true
+            0b10100010, // is_weight_removed = true, is_stabilized = true, has_impedance = true,
             0xE5, 0x07, // year = 2021
             0x06, // month = 6
             0x15, // day = 21

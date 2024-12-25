@@ -12,6 +12,10 @@ use std::collections::HashMap;
 use std::string::String;
 use uuid::Uuid;
 
+#[cfg(test)]
+#[path = "./tests/bluetooth_scanner_tests.rs"]
+mod tests;
+
 pub struct BluetoothScanner<'a> {
     packet_data_processor: &'a dyn IPacketDataProcessor,
     utils: &'a dyn IUtils,
@@ -39,7 +43,7 @@ pub trait IBluetoothScanner: Sync {
         previous_packet: &mut Vec<u8>,
     ) -> Result<(), CliError>;
     async fn get_adapter(&self) -> Result<Adapter, CliError>;
-    async fn get_central(&self, manager: &Manager) -> Result<Adapter, CliError>;
+    fn are_mac_addresses_equal(&self, id: &PeripheralId) -> Result<bool, CliError>;
 }
 
 #[async_trait]
@@ -75,25 +79,8 @@ impl<'a> IBluetoothScanner for BluetoothScanner<'a> {
     ) -> Result<(), CliError> {
         let search_str = "181b";
         for (uuid, data) in &service_data {
-            // There's only visible mac address in linux (hci0/dev_B4_56_5D_BF_B9_56), on macOS, the id is random guid.
-            // Ensuring a bit more security with linux if mac address would not match (some other scales are being used).
-            if cfg!(target_os = "linux") {
-                let id_in_str = id.to_string();
-                let parts: Vec<&str> = id_in_str.split('/').collect();
-                if parts.len() > 1 {
-                    let mac_address = if let Some(stripped) = parts[1].strip_prefix("dev_") {
-                        stripped
-                    } else {
-                        parts[1]
-                    }
-                    .replace('_', ":");
-
-                    if mac_address != self.utils.read_configuration_file()?.mac_address {
-                        continue;
-                    }
-                } else {
-                    println!("Invalid input format.");
-                }
+            if !self.are_mac_addresses_equal(&id)? {
+                continue;
             }
 
             if uuid.to_string().contains(search_str) {
@@ -115,12 +102,33 @@ impl<'a> IBluetoothScanner for BluetoothScanner<'a> {
         Ok(())
     }
 
-    async fn get_adapter(&self) -> Result<Adapter, CliError> {
-        let manager = Manager::new().await?;
-        self.get_central(&manager).await
+    fn are_mac_addresses_equal(&self, id: &PeripheralId) -> Result<bool, CliError> {
+        // There's only visible mac address in linux (hci0/dev_B4_56_5D_BF_B9_56), on macOS, the id is random guid.
+        // Ensuring a bit more security with linux if mac address would not match (some other scales are being used).
+        if cfg!(target_os = "linux") {
+            let id_in_str = id.to_string();
+            let parts: Vec<&str> = id_in_str.split('/').collect();
+            if parts.len() <= 1 {
+                println!("Invalid input format.");
+                return Ok(true);
+            }
+
+            let mac_address = if let Some(stripped) = parts[1].strip_prefix("dev_") {
+                stripped
+            } else {
+                parts[1]
+            }
+            .replace('_', ":");
+
+            if mac_address != self.utils.read_configuration_file()?.mac_address {
+                return Ok(false);
+            }
+        }
+        Ok(true)
     }
 
-    async fn get_central(&self, manager: &Manager) -> Result<Adapter, CliError> {
+    async fn get_adapter(&self) -> Result<Adapter, CliError> {
+        let manager = Manager::new().await?;
         let adapters = manager.adapters().await?;
 
         match adapters.into_iter().nth(0) {
