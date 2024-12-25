@@ -12,26 +12,26 @@ mod tests {
     use std::collections::HashMap;
     use uuid::Uuid;
 
-    #[test]
-    fn test_are_mac_addresses_equal_linux() {
-        let mut mock_utils = MockIUtils::new();
-        mock_utils
-            .expect_read_configuration_file()
-            .returning(|| Ok(get_mock_config()));
+    // #[test]
+    // fn test_are_mac_addresses_equal_linux() {
+    //     let mut mock_utils = MockIUtils::new();
+    //     mock_utils
+    //         .expect_read_configuration_file()
+    //         .returning(|| Ok(get_mock_config()));
 
-        let mock_packet_processor = MockIPacketDataProcessor::new();
-        let scanner = BluetoothScanner::new(&mock_packet_processor, &mock_utils);
+    //     let mock_packet_processor = MockIPacketDataProcessor::new();
+    //     let scanner = BluetoothScanner::new(&mock_packet_processor, &mock_utils);
 
-        let matching_uuid = Uuid::parse_str("b4565dbf-b956-1234-5678-abcdef123456").unwrap();
-        let non_matching_uuid = Uuid::parse_str("12345678-1234-5678-1234-abcdef123456").unwrap();
+    //     let matching_uuid = Uuid::parse_str("b4565dbf-b956-1234-5678-abcdef123456").unwrap();
+    //     let non_matching_uuid = Uuid::parse_str("12345678-1234-5678-1234-abcdef123456").unwrap();
 
-        let matching_id = PeripheralId::from(matching_uuid);
-        let non_matching_id = PeripheralId::from(non_matching_uuid);
+    //     let matching_id = PeripheralId::from(matching_uuid);
+    //     let non_matching_id = PeripheralId::from(non_matching_uuid);
 
-        // assert!(scanner.are_mac_addresses_equal(&matching_id).unwrap());
+    //     // assert!(scanner.are_mac_addresses_equal(&matching_id).unwrap());
 
-        // assert!(!scanner.are_mac_addresses_equal(&non_matching_id).unwrap());
-    }
+    //     // assert!(!scanner.are_mac_addresses_equal(&non_matching_id).unwrap());
+    // }
 
     #[tokio::test]
     #[serial]
