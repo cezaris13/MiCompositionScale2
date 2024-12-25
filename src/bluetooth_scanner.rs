@@ -102,6 +102,16 @@ impl<'a> IBluetoothScanner for BluetoothScanner<'a> {
         Ok(())
     }
 
+    async fn get_adapter(&self) -> Result<Adapter, CliError> {
+        let manager = Manager::new().await?;
+        let adapters = manager.adapters().await?;
+
+        match adapters.into_iter().nth(0) {
+            Some(adapter) => Ok(adapter),
+            None => Err(CliError::Error(String::from("Could not get adapter"))),
+        }
+    }
+
     fn are_mac_addresses_equal(&self, id: &PeripheralId) -> Result<bool, CliError> {
         // There's only visible mac address in linux (hci0/dev_B4_56_5D_BF_B9_56), on macOS, the id is random guid.
         // Ensuring a bit more security with linux if mac address would not match (some other scales are being used).
@@ -125,15 +135,5 @@ impl<'a> IBluetoothScanner for BluetoothScanner<'a> {
             }
         }
         Ok(true)
-    }
-
-    async fn get_adapter(&self) -> Result<Adapter, CliError> {
-        let manager = Manager::new().await?;
-        let adapters = manager.adapters().await?;
-
-        match adapters.into_iter().nth(0) {
-            Some(adapter) => Ok(adapter),
-            None => Err(CliError::Error(String::from("Could not get adapter"))),
-        }
     }
 }
