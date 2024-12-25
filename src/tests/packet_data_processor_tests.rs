@@ -1,16 +1,12 @@
 #[cfg(test)]
 mod tests {
     use crate::cli_error::CliError;
-    use crate::data_types::gender::Gender;
-    use crate::data_types::mass_unit::MassUnit;
-    use crate::data_types::packet_data::PacketData;
-    use crate::data_types::user::UserData;
     use crate::fitbit_api_manager::MockIFitbitApiManager;
     use crate::packet_data_processor::IPacketDataProcessor;
+    use crate::tests::test_utils::{get_test_packet_data, get_test_user_data};
     use crate::tests::vector_logger::LOGGER;
     use crate::PacketDataProcessor;
 
-    use chrono::Utc;
     use reqwest::Response;
     use serial_test::serial;
 
@@ -241,31 +237,5 @@ mod tests {
             logs[2],
             format!("[WARN] Failed to update body weight: Error in program: {error}")
         );
-    }
-
-    fn get_test_packet_data(has_impedance: Option<bool>) -> PacketData {
-        let has_impedance = has_impedance.unwrap_or_else(|| true);
-
-        PacketData {
-            weight: 70.0,
-            unit: MassUnit::Kg,
-            has_impedance,
-            impedance: 500,
-            is_stabilized: true,
-            is_weight_removed: false,
-            datetime: Utc::now(),
-        }
-    }
-
-    fn get_test_user_data(sample_weight: Option<f32>) -> UserData {
-        let weight = sample_weight.unwrap_or_else(|| 70.2);
-
-        UserData {
-            gender: Gender::Male,
-            age: 30,
-            height: 175.5,
-            weight,
-            time_zone: String::from("UTC+1"),
-        }
     }
 }

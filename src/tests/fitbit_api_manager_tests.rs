@@ -3,11 +3,10 @@ mod tests {
     use crate::authorization::MockIAuthorization;
     use crate::cli_error::CliError;
     use crate::data_types::gender::Gender;
-    use crate::data_types::user::{User, UserData};
     use crate::fitbit_api_manager::FitbitApiManager;
     use crate::fitbit_api_manager::IFitbitApiManager;
     use crate::http_request_handler::MockIHttpRequestHandler;
-    use crate::tests::mock_response_builder::mock_response;
+    use crate::tests::test_utils::{get_mock_response, get_test_user_data_as_string};
 
     use chrono::Utc;
     use reqwest::StatusCode;
@@ -24,11 +23,11 @@ mod tests {
 
         mock_http_request_handler
             .expect_handle_http_request()
-            .returning(|_| Ok(mock_response(StatusCode::OK, "some data")));
+            .returning(|_| Ok(get_mock_response(StatusCode::OK, "some data")));
 
         mock_http_request_handler
             .expect_get_response_body()
-            .returning(|_| Ok(test_user_data()));
+            .returning(|_| Ok(get_test_user_data_as_string()));
 
         let sut = FitbitApiManager::new(
             &mock_authorization,
@@ -123,7 +122,7 @@ mod tests {
 
         mock_http_request_handler
             .expect_handle_http_request()
-            .returning(|_| Ok(mock_response(StatusCode::OK, "some data")));
+            .returning(|_| Ok(get_mock_response(StatusCode::OK, "some data")));
 
         mock_http_request_handler
             .expect_get_response_body()
@@ -160,7 +159,7 @@ mod tests {
 
         mock_http_request_handler
             .expect_handle_http_request()
-            .returning(|_| Ok(mock_response(StatusCode::OK, "some data")));
+            .returning(|_| Ok(get_mock_response(StatusCode::OK, "some data")));
 
         mock_http_request_handler
             .expect_get_response_body()
@@ -199,7 +198,7 @@ mod tests {
         let response_body = "some data";
         mock_http_request_handler
             .expect_handle_http_request()
-            .returning(|_| Ok(mock_response(StatusCode::OK, response_body)));
+            .returning(|_| Ok(get_mock_response(StatusCode::OK, response_body)));
 
         let sut = FitbitApiManager::new(
             &mock_authorization,
@@ -258,7 +257,7 @@ mod tests {
         let response_body = "some data";
         mock_http_request_handler
             .expect_handle_http_request()
-            .returning(|_| Ok(mock_response(StatusCode::OK, response_body)));
+            .returning(|_| Ok(get_mock_response(StatusCode::OK, response_body)));
 
         let sut = FitbitApiManager::new(
             &mock_authorization,
@@ -302,19 +301,5 @@ mod tests {
                 "Expected error: CliError::Error(\"some error\"), but got a different result"
             );
         }
-    }
-
-    fn test_user_data() -> String {
-        let user_data = UserData {
-            gender: Gender::Male,
-            age: 30,
-            height: 175.5,
-            weight: 70.2,
-            time_zone: "America/New_York".to_string(),
-        };
-
-        let user = User { user: user_data };
-
-        serde_json::to_string(&user).unwrap()
     }
 }

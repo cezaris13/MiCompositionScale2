@@ -4,10 +4,8 @@ mod tests {
     use crate::authorization::IAuthorization;
     use crate::authorization::TOKEN_FILE;
     use crate::cli_error::CliError;
-    use crate::data_types::config::Config;
-    use crate::data_types::token::Token;
     use crate::http_request_handler::MockIHttpRequestHandler;
-    use crate::tests::mock_response_builder::mock_response;
+    use crate::tests::test_utils::{get_mock_config, get_mock_response, get_mock_token};
     use crate::tests::vector_logger::LOGGER;
     use crate::utils::MockIUtils;
     use crate::utils::{IUtils, Utils};
@@ -172,12 +170,10 @@ mod tests {
         let token_str =
             "{\"access_token\":\"mocked_access_token\",\"refresh_token\":\"mocked_refresh_token\"}";
 
-        // Create a mock file with the token content
         let token_file_path = utils.get_current_project_directory().unwrap() + "/" + TOKEN_FILE;
 
         let _ = fs::write(token_file_path.clone(), token_str);
 
-        // Mock function call
         let sut = Authorization {
             utils: &utils,
             http_request_handler: &mock_http_handler,
@@ -186,7 +182,6 @@ mod tests {
 
         let result = sut.read_auth_token();
 
-        // Clean up the test file
         let _ = fs::remove_file(token_file_path);
 
         assert!(result.is_ok());
@@ -211,7 +206,6 @@ mod tests {
             .expect_get_current_project_directory()
             .returning(|| Ok(String::from("/mock/directory")));
 
-        // Mock function call
         let sut = Authorization {
             utils: &mock_utils,
             http_request_handler: &mock_http_handler,
@@ -244,11 +238,9 @@ mod tests {
 
         let invalid_token_str = "invalid_token_content";
 
-        // Create a mock file with invalid token content
         let token_file_path = utils.get_current_project_directory().unwrap() + "/" + TOKEN_FILE;
         let _ = fs::write(token_file_path.clone(), invalid_token_str);
 
-        // Mock function call
         let sut = Authorization {
             utils: &utils,
             http_request_handler: &mock_http_handler,
@@ -256,7 +248,6 @@ mod tests {
         };
         let result = sut.read_auth_token();
 
-        // Clean up the test file
         let _ = fs::remove_file(token_file_path);
 
         assert!(result.is_err());
@@ -276,7 +267,6 @@ mod tests {
         // let mut mock_http_handler = MockIHttpRequestHandler::new();
         // let mock_client = reqwest::Client::new();
 
-        // // Define the behavior of the mocked methods
         // mock_utils
         //     .expect_get_current_project_directory()
         //     .returning(|| Ok(String::from("/mock/directory")));
@@ -297,14 +287,11 @@ mod tests {
         //     http_client: &mock_client,
         // };
 
-        // // Create test data
         // let client_id = String::from("mock_client_id");
         // let secret = String::from("mock_secret");
 
-        // Call the method
         // let result = sut.get_auth_token(client_id, secret).await;
 
-        // // Assertions
         // assert!(result.is_ok());
     }
 
@@ -319,16 +306,92 @@ mod tests {
     //         http_client: &mock_client,
     //     };
 
-    //     // Define mock token
     //     let mock_token = String::from("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxMjM0NTY3ODkwLCJleHBpcnkiOiIyMDI0LTAxLTAxVDEyOjAwOjAwWiJ9.H1Jnt1e8RJ-1SxLVqIs9gL2O9MwK8V78VzNEsaJlVHg");
 
-    //     // Mock behavior for token expiration check
     //     let expired = authorization.is_access_token_expired(&mock_token).unwrap();
 
     //     assert_eq!(expired, true);
     // }
-    //
-    //
+
+    // #[tokio::test]
+    // #[serial]
+    // async fn test_get_access_token_valid_token() {
+    //     let mock_utils = Utils::new();
+    //     let mock_client = reqwest::Client::new();
+    //     let mock_http_handler = MockIHttpRequestHandler::new();
+
+    //     let token = get_mock_token(None);
+
+    //     let sut = Authorization {
+    //         utils: &mock_utils,
+    //         http_request_handler: &mock_http_handler,
+    //         http_client: &mock_client,
+    //     };
+
+    //     sut.write_auth_token(token.clone()).unwrap();
+
+    //     let result = sut.get_access_token().await;
+
+    //     assert!(result.is_ok());
+    //     assert_eq!(result.unwrap(), token.access_token);
+    // }
+
+    // #[tokio::test]
+    // #[serial]
+    // async fn test_get_access_token_expired_token() {
+    //     let mut mock_utils = MockIUtils::new();
+    //     let mock_client = reqwest::Client::new();
+    //     let mut mock_http_handler = MockIHttpRequestHandler::new();
+    //     mock_http_handler
+    //         .expect_handle_http_request()
+    //         .times(1)
+    //         .returning(|_| Ok(mock_response(StatusCode::OK, "new token")));
+
+    //     let expired_token = "expired_token";
+
+    //     mock_utils
+    //         .expect_get_current_project_directory()
+    //         .returning(|| Ok(String::from("/mock/directory")));
+
+    //     let sut = Authorization {
+    //         utils: &mock_utils,
+    //         http_request_handler: &mock_http_handler,
+    //         http_client: &mock_client,
+    //     };
+
+    //     let result = sut.get_access_token().await;
+
+    //     assert!(result.is_ok());
+    //     assert_eq!(result.unwrap(), expired_token);
+    // }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_get_access_token_read_auth_token_error() {
+        let mut mock_utils = MockIUtils::new();
+        let mock_client = reqwest::Client::new();
+        let mock_http_handler = MockIHttpRequestHandler::new();
+
+        let error_message = "Failed to read auth token";
+
+        mock_utils
+            .expect_get_current_project_directory()
+            .returning(|| Err(CliError::Error(error_message.to_string())));
+
+        let sut = Authorization {
+            utils: &mock_utils,
+            http_request_handler: &mock_http_handler,
+            http_client: &mock_client,
+        };
+
+        let result = sut.get_access_token().await;
+
+        assert!(result.is_err());
+        assert_eq!(
+            result.err().unwrap().to_string(),
+            format!("Error in program: {error_message}")
+        );
+    }
 
     #[tokio::test]
     #[serial]
@@ -343,7 +406,7 @@ mod tests {
         mock_http_handler
             .expect_handle_http_request()
             .times(1)
-            .returning(|_| Ok(mock_response(StatusCode::OK, "Some body")));
+            .returning(|_| Ok(get_mock_response(StatusCode::OK, "Some body")));
 
         let new_access_token = "new access token";
         mock_http_handler
@@ -502,7 +565,7 @@ mod tests {
         mock_http_handler
             .expect_handle_http_request()
             .times(1)
-            .returning(|_| Ok(mock_response(StatusCode::OK, "Some body")));
+            .returning(|_| Ok(get_mock_response(StatusCode::OK, "Some body")));
 
         let error_message = "some error message";
         mock_http_handler
@@ -552,7 +615,7 @@ mod tests {
         mock_http_handler
             .expect_handle_http_request()
             .times(1)
-            .returning(|_| Ok(mock_response(StatusCode::OK, "Some body")));
+            .returning(|_| Ok(get_mock_response(StatusCode::OK, "Some body")));
 
         mock_http_handler
             .expect_get_response_body()
@@ -585,21 +648,5 @@ mod tests {
         let logs = logger_ref.get_logs();
 
         assert_eq!(logs.len(), 0);
-    }
-
-    fn get_mock_config() -> Config {
-        Config {
-            mac_address: String::from("Some mac address"),
-            client_id: String::from("mock_client_id"),
-            client_secret: String::from("mock_secret"),
-        }
-    }
-
-    fn get_mock_token(access_token: Option<String>) -> Token {
-        let access_token = access_token.unwrap_or(String::from("Some access token"));
-        Token {
-            access_token,
-            refresh_token: String::from("some refresh token"),
-        }
     }
 }

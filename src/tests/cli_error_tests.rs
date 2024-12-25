@@ -60,7 +60,6 @@ mod tests {
 
         let now = SystemTime::now();
 
-        // Create a future time (e.g., 5 seconds from now)
         let future_time = now + Duration::new(5, 0);
 
         let time_error = now.duration_since(future_time).err().unwrap();
@@ -72,7 +71,6 @@ mod tests {
 
     #[test]
     fn test_source() {
-        // Test the source method for each error type
         let json_error = serde_json::from_str::<User>("some random").err().unwrap();
         let json_error1 = serde_json::from_str::<User>("some random").err().unwrap();
         let cli_error = CliError::ParseError(json_error);
@@ -113,7 +111,6 @@ mod tests {
             oauth_error.to_string()
         );
 
-        // Check source for JsonWebTokenError
         let jwt_error = jsonwebtokens::error::Error::InvalidSignature();
         let jwt_error1 = jsonwebtokens::error::Error::InvalidSignature();
 
@@ -123,7 +120,6 @@ mod tests {
             jwt_error1.to_string()
         );
 
-        // Check source for OpenerError
         let io_error = io::Error::new(io::ErrorKind::Other, "IO test error");
         let opener_error = opener::OpenError::Io(io_error);
 
