@@ -4,7 +4,6 @@ mod tests {
     use crate::authorization::IAuthorization;
     use crate::authorization::TOKEN_FILE;
     use crate::cli_error::CliError;
-    use crate::data_types::token::Token;
     use crate::http_request_handler::MockIHttpRequestHandler;
     use crate::tests::test_utils::{
         create_mock_stream, create_mock_token, get_mock_config, get_mock_response, get_mock_token,
@@ -13,9 +12,8 @@ mod tests {
     use crate::utils::MockIUtils;
     use crate::utils::{IUtils, Utils};
 
-    use oauth2::basic::BasicClient;
     use oauth2::url::Url;
-    use oauth2::{AuthUrl, ClientId, ClientSecret, CsrfToken, TokenUrl};
+    use oauth2::{AuthorizationCode, CsrfToken};
     use reqwest::StatusCode;
     use serial_test::serial;
     use std::fs;
@@ -319,20 +317,12 @@ mod tests {
     #[test]
     #[serial]
     fn test_get_token_from_tcp_listener() {
-        let client_id = String::from("");
-        let client_secret = String::from("some_client_secret");
         let mock_code = "mock_code";
         let mock_state = "test_csrf_state";
 
-        let client = BasicClient::new(
-            ClientId::new(client_id),
-            Some(ClientSecret::new(client_secret)),
-            AuthUrl::new("https://www.fitbit.com/oauth2/authorize".to_string()).unwrap(),
-            Some(TokenUrl::new("https://api.fitbit.com/oauth2/token".to_string()).unwrap()),
-        );
-
         let csrf_state = CsrfToken::new(mock_state.to_string());
-        let result: Arc<Mutex<Option<Result<Token, CliError>>>> = Arc::new(Mutex::new(None));
+        let result: Arc<Mutex<Option<Result<AuthorizationCode, CliError>>>> =
+            Arc::new(Mutex::new(None));
 
         let data = Arc::clone(&result);
         let server = thread::spawn(move || {
@@ -342,9 +332,7 @@ mod tests {
                 http_client: &reqwest::Client::new(),
             };
             let mut data = data.lock().unwrap();
-            *data = Some(tokio_test::block_on(
-                sut.get_token_from_tcp_listener(client, csrf_state),
-            ));
+            *data = Some(sut.get_code_from_tcp_listener(csrf_state));
         });
 
         thread::sleep(std::time::Duration::from_millis(100));
@@ -379,11 +367,9 @@ mod tests {
         assert!(!result.is_none());
         let result = result.as_ref().unwrap();
 
-        println!("{:?}", result);
         assert!(result.is_ok());
-        let token = result.as_ref().unwrap();
-        assert_eq!(token.access_token, mock_code);
-        assert_eq!(token.refresh_token, "")
+        let code = result.as_ref().unwrap();
+        assert_eq!(code.secret(), mock_code);
     }
 
     #[tokio::test]

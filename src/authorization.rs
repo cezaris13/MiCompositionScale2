@@ -75,10 +75,14 @@ pub trait IAuthorization: Sync {
     async fn get_token(&self, client_id: String, client_secret: String) -> Result<Token, CliError>;
     fn get_url_from_stream(&self, stream: &TcpStream) -> Result<Url, CliError>;
     fn get_key_value_from_url(&self, url: &Url, key_parameter: &str) -> Result<String, CliError>;
-    async fn get_token_from_tcp_listener(
+    fn get_code_from_tcp_listener(
+        &self,
+        csrf_state: CsrfToken,
+    ) -> Result<AuthorizationCode, CliError>;
+    async fn exchange_code_with_token(
         &self,
         client: OAuth2Client,
-        csrf_state: CsrfToken,
+        code: AuthorizationCode,
     ) -> Result<Token, CliError>;
 }
 
@@ -193,7 +197,9 @@ impl<'a> IAuthorization for Authorization<'a> {
 
         opener::open(authorize_url.to_string())?;
 
-        self.get_token_from_tcp_listener(client, csrf_state).await
+        let code = self.get_code_from_tcp_listener(csrf_state)?;
+
+        self.exchange_code_with_token(client, code).await
     }
 
     fn get_url_from_stream(&self, stream: &TcpStream) -> Result<Url, CliError> {
@@ -215,6 +221,7 @@ impl<'a> IAuthorization for Authorization<'a> {
             &("http://localhost".to_string() + redirect_url),
         )?)
     }
+
     fn get_key_value_from_url(&self, url: &Url, key_parameter: &str) -> Result<String, CliError> {
         let pair = url
             .query_pairs()
@@ -231,18 +238,19 @@ impl<'a> IAuthorization for Authorization<'a> {
         }
     }
 
-    async fn get_token_from_tcp_listener(
+    fn get_code_from_tcp_listener(
         &self,
-        client: OAuth2Client,
         csrf_state: CsrfToken,
-    ) -> Result<Token, CliError> {
+    ) -> Result<AuthorizationCode, CliError> {
         let listener = TcpListener::bind("127.0.0.1:8080")?;
+        let mut code: Option<AuthorizationCode> = None;
+
         for stream in listener.incoming() {
             if let Ok(mut stream) = stream {
                 let url = self.get_url_from_stream(&stream)?;
 
                 let value = self.get_key_value_from_url(&url, "code")?;
-                let code = AuthorizationCode::new(value);
+                code = Some(AuthorizationCode::new(value));
 
                 let value = self.get_key_value_from_url(&url, "state")?;
                 let state = CsrfToken::new(value);
@@ -262,30 +270,42 @@ impl<'a> IAuthorization for Authorization<'a> {
                     )));
                 }
 
-                // Exchange the code with a token.
-                let token = match client
-                    .exchange_code(code)
-                    .request_async(async_http_client)
-                    .await
-                {
-                    Ok(t) => t,
-                    Err(e) => {
-                        error!("OAuth2: {}", e);
-                        return Err(CliError::Error(e.to_string()));
-                    }
-                };
-
-                let refresh_token = match token.refresh_token() {
-                    Some(token) => token.secret(),
-                    None => "",
-                };
-
-                return Ok(Token {
-                    access_token: token.access_token().secret().to_string(),
-                    refresh_token: refresh_token.to_string(),
-                });
+                break;
             }
         }
-        unreachable!();
+        match code {
+            Some(code) => Ok(code),
+            None => Err(CliError::Error(String::from(
+                "No code has been retrieved. Aborting.",
+            ))),
+        }
+    }
+
+    async fn exchange_code_with_token(
+        &self,
+        client: OAuth2Client,
+        code: AuthorizationCode,
+    ) -> Result<Token, CliError> {
+        let token = match client
+            .exchange_code(code)
+            .request_async(async_http_client)
+            .await
+        {
+            Ok(t) => t,
+            Err(e) => {
+                error!("OAuth2: {}", e);
+                return Err(CliError::Error(e.to_string()));
+            }
+        };
+
+        let refresh_token = match token.refresh_token() {
+            Some(token) => token.secret(),
+            None => "",
+        };
+
+        Ok(Token {
+            access_token: token.access_token().secret().to_string(),
+            refresh_token: refresh_token.to_string(),
+        })
     }
 }
