@@ -5,7 +5,9 @@ mod tests {
     use crate::authorization::TOKEN_FILE;
     use crate::cli_error::CliError;
     use crate::http_request_handler::MockIHttpRequestHandler;
-    use crate::tests::test_utils::{get_mock_config, get_mock_response, get_mock_token};
+    use crate::tests::test_utils::{
+        create_mock_stream, create_mock_token, get_mock_config, get_mock_response, get_mock_token,
+    };
     use crate::tests::vector_logger::LOGGER;
     use crate::utils::MockIUtils;
     use crate::utils::{IUtils, Utils};
@@ -14,6 +16,7 @@ mod tests {
     use reqwest::StatusCode;
     use serial_test::serial;
     use std::fs;
+    use std::time::{SystemTime, UNIX_EPOCH};
 
     #[tokio::test]
     #[serial]
@@ -296,23 +299,64 @@ mod tests {
         // assert!(result.is_ok());
     }
 
-    // #[tokio::test]
-    // async fn test_is_access_token_expired() {
-    //     let mock_utils = MockIUtils::new();
-    //     let mock_client = reqwest::Client::new();
-    //     let mock_http_handler = MockIHttpRequestHandler::new();
-    //     let authorization = Authorization {
-    //         utils: &mock_utils,
-    //         http_request_handler: &mock_http_handler,
-    //         http_client: &mock_client,
-    //     };
+    #[test]
+    fn test_is_access_token_expired_expired_token() {
+        let expired_time = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_secs()
+            - 100; // Set expiration time 100 seconds in the past
+        let mock_token = create_mock_token(expired_time);
 
-    //     let mock_token = String::from("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxMjM0NTY3ODkwLCJleHBpcnkiOiIyMDI0LTAxLTAxVDEyOjAwOjAwWiJ9.H1Jnt1e8RJ-1SxLVqIs9gL2O9MwK8V78VzNEsaJlVHg");
+        let sut = Authorization {
+            utils: &MockIUtils::new(),
+            http_request_handler: &MockIHttpRequestHandler::new(),
+            http_client: &reqwest::Client::new(),
+        };
 
-    //     let expired = authorization.is_access_token_expired(&mock_token).unwrap();
+        let result = sut.is_access_token_expired(&mock_token);
+        assert!(result.is_ok());
+        assert!(result.unwrap());
+    }
 
-    //     assert_eq!(expired, true);
-    // }
+    #[test]
+    fn test_is_access_token_expired_valid_token() {
+        let valid_time = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_secs()
+            + 3600; // Set expiration time 1 hour in the future
+        let mock_token = create_mock_token(valid_time);
+
+        let sut = Authorization {
+            utils: &MockIUtils::new(),
+            http_request_handler: &MockIHttpRequestHandler::new(),
+            http_client: &reqwest::Client::new(),
+        };
+
+        let result = sut.is_access_token_expired(&mock_token);
+
+        assert!(result.is_ok());
+        assert!(!result.unwrap());
+    }
+
+    #[test]
+    fn test_is_access_token_expired_malformed_token() {
+        let malformed_token = "invalid.token.structure".to_string();
+
+        let sut = Authorization {
+            utils: &MockIUtils::new(),
+            http_request_handler: &MockIHttpRequestHandler::new(),
+            http_client: &reqwest::Client::new(),
+        };
+
+        let result = sut.is_access_token_expired(&malformed_token);
+        assert!(result.is_err());
+        assert_eq!(
+            result.err().unwrap().to_string(),
+            "JsonWebToken error: Invalid Input: base64 decode failure"
+        );
+    }
 
     // #[tokio::test]
     // #[serial]
@@ -682,6 +726,42 @@ mod tests {
         assert_eq!(
             result.unwrap_err().to_string(),
             format!("Error in program: Value for key {nonexistent_value} was not found")
+        );
+    }
+
+    #[test]
+    fn test_get_url_from_stream_success() {
+        let request_line = "GET /callback?code=123&state=abc HTTP/1.1\r\n".to_string();
+        let mock_stream = create_mock_stream(request_line);
+
+        let authorization = Authorization {
+            utils: &MockIUtils::new(),
+            http_request_handler: &MockIHttpRequestHandler::new(),
+            http_client: &reqwest::Client::new(),
+        };
+
+        let result = authorization.get_url_from_stream(&mock_stream);
+        assert!(result.is_ok());
+        let url = result.unwrap();
+        assert_eq!(url.as_str(), "http://localhost/callback?code=123&state=abc");
+    }
+
+    #[test]
+    fn test_get_url_from_stream_empty_request_line() {
+        let request_line = "\r\n".to_string();
+        let mock_stream = create_mock_stream(request_line);
+
+        let authorization = Authorization {
+            utils: &MockIUtils::new(),
+            http_request_handler: &MockIHttpRequestHandler::new(),
+            http_client: &reqwest::Client::new(),
+        };
+
+        let result = authorization.get_url_from_stream(&mock_stream);
+        assert!(result.is_err());
+        assert_eq!(
+            result.unwrap_err().to_string(),
+            "Error in program: No element has been provided"
         );
     }
 }

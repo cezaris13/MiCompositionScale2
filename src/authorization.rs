@@ -61,7 +61,7 @@ pub trait IAuthorization: Sync {
     async fn refresh_access_token(&self) -> Result<String, CliError>;
     fn is_access_token_expired(&self, access_token: &String) -> Result<bool, CliError>;
     async fn get_token(&self, client_id: String, client_secret: String) -> Result<Token, CliError>;
-    fn get_url_from_stream(&self, stream: &std::net::TcpStream) -> Result<Url, CliError>;
+    fn get_url_from_stream(&self, stream: &TcpStream) -> Result<Url, CliError>;
     fn get_key_value_from_url(&self, url: &Url, key_parameter: &str) -> Result<String, CliError>;
 }
 

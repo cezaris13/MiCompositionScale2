@@ -5,10 +5,14 @@ use crate::data_types::packet_data::PacketData;
 use crate::data_types::token::Token;
 use crate::data_types::user::{User, UserData};
 
+use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
 use chrono::Utc;
 use http::Response as HttpResponse;
 use mockall::predicate::*;
 use reqwest::{Response, StatusCode};
+use serde_json::{json, to_vec};
+use std::io::Write;
+use std::net::{TcpListener, TcpStream};
 
 pub fn get_mock_response(status: StatusCode, body: &str) -> Response {
     let response = HttpResponse::builder()
@@ -93,4 +97,31 @@ pub fn get_test_user_data(sample_weight: Option<f32>) -> UserData {
         weight,
         time_zone: String::from("UTC+1"),
     }
+}
+
+pub fn create_mock_stream(request_line: String) -> TcpStream {
+    // Create a listener to simulate a TCP stream
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    let port = listener.local_addr().unwrap().port();
+
+    // Spawn a thread to act as a mock client
+    std::thread::spawn(move || {
+        let mut stream = TcpStream::connect(("127.0.0.1", port)).unwrap();
+        stream.write_all(request_line.as_bytes()).unwrap();
+    });
+
+    listener.accept().unwrap().0
+}
+
+pub fn create_mock_token(exp: u64) -> String {
+    let claims = json!({
+        "exp": exp,
+    });
+    let claims_bytes = to_vec(&claims).unwrap();
+    let encoded_claims = URL_SAFE_NO_PAD.encode(claims_bytes);
+
+    // Assemble a mock JWT token (header.payload.signature)
+    let header = URL_SAFE_NO_PAD.encode(b"{}"); // Empty JSON header
+    let signature = "signature"; // Signature can be any placeholder
+    format!("{header}.{encoded_claims}.{signature}")
 }
