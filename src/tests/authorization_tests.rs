@@ -4,6 +4,7 @@ mod tests {
     use crate::authorization::IAuthorization;
     use crate::authorization::TOKEN_FILE;
     use crate::cli_error::CliError;
+    use crate::data_types::token::Token;
     use crate::http_request_handler::MockIHttpRequestHandler;
     use crate::tests::test_utils::{
         create_mock_stream, create_mock_token, get_mock_config, get_mock_response, get_mock_token,
@@ -12,7 +13,6 @@ mod tests {
     use crate::utils::MockIUtils;
     use crate::utils::{IUtils, Utils};
 
-    use futures::executor::block_on;
     use oauth2::basic::BasicClient;
     use oauth2::url::Url;
     use oauth2::{AuthUrl, ClientId, ClientSecret, CsrfToken, TokenUrl};
@@ -21,6 +21,7 @@ mod tests {
     use std::fs;
     use std::io::{Read, Write};
     use std::net::TcpStream;
+    use std::sync::{Arc, Mutex};
     use std::thread;
     use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -316,9 +317,10 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_get_token_from_tcp_listener() {
         let client_id = String::from("");
-        let client_secret = String::from("");
+        let client_secret = String::from("some_client_secret");
         let mock_code = "mock_code";
         let mock_state = "test_csrf_state";
 
@@ -330,24 +332,24 @@ mod tests {
         );
 
         let csrf_state = CsrfToken::new(mock_state.to_string());
+        let result: Arc<Mutex<Option<Result<Token, CliError>>>> = Arc::new(Mutex::new(None));
 
-        thread::spawn(move || {
+        let data = Arc::clone(&result);
+        let server = thread::spawn(move || {
             let sut = Authorization {
                 utils: &MockIUtils::new(),
                 http_request_handler: &MockIHttpRequestHandler::new(),
                 http_client: &reqwest::Client::new(),
             };
-
-            let result = block_on(sut.get_token_from_tcp_listener(client, csrf_state));
-            assert!(result.is_ok(), "Failed to retrieve token: {:?}", result);
-            let token = result.unwrap();
-            assert_eq!(token.access_token, mock_code);
-            assert_eq!(token.refresh_token, "");
+            let mut data = data.lock().unwrap();
+            *data = Some(tokio_test::block_on(
+                sut.get_token_from_tcp_listener(client, csrf_state),
+            ));
         });
 
-        let mut buffer = [0; 1024];
-
         thread::sleep(std::time::Duration::from_millis(100));
+
+        let mut buffer = [0; 1024];
 
         let mut stream = TcpStream::connect("127.0.0.1:8080").expect("Failed to connect to server");
         let message = format!(
@@ -368,7 +370,20 @@ mod tests {
             .filter(|p| *p != '\0')
             .collect::<String>();
 
-        assert_eq!(data, "HTTP/1.1 200 OK\r\ncontent-length: 48\r\n\r\nToken has been retrieved. You may close the tab.")
+        assert_eq!(data, "HTTP/1.1 200 OK\r\ncontent-length: 48\r\n\r\nToken has been retrieved. You may close the tab.");
+
+        let _ = server.join();
+
+        let result = Arc::clone(&result);
+        let result = result.lock().unwrap();
+        assert!(!result.is_none());
+        let result = result.as_ref().unwrap();
+
+        println!("{:?}", result);
+        assert!(result.is_ok());
+        let token = result.as_ref().unwrap();
+        assert_eq!(token.access_token, mock_code);
+        assert_eq!(token.refresh_token, "")
     }
 
     #[tokio::test]

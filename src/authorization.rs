@@ -256,11 +256,11 @@ impl<'a> IAuthorization for Authorization<'a> {
                 stream.write_all(response.as_bytes())?;
 
                 // Verify that the state we generated matches the one the server sent us.
-                assert_eq!(
-                    csrf_state.secret(),
-                    state.secret(),
-                    "CSRF state mismatch. Malicious actor?"
-                );
+                if csrf_state.secret() != state.secret() {
+                    return Err(CliError::Error(String::from(
+                        "CSRF state mismatch. Malicious actor?",
+                    )));
+                }
 
                 // Exchange the code with a token.
                 let token = match client
@@ -271,7 +271,6 @@ impl<'a> IAuthorization for Authorization<'a> {
                     Ok(t) => t,
                     Err(e) => {
                         error!("OAuth2: {}", e);
-                        eprintln!("Failed to exchange the code for a valid access_token.\nIncorrect client secret?");
                         return Err(CliError::Error(e.to_string()));
                     }
                 };
