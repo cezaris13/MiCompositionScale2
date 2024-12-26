@@ -12,15 +12,21 @@ mod tests {
     use crate::utils::MockIUtils;
     use crate::utils::{IUtils, Utils};
 
+    use futures::executor::block_on;
+    use oauth2::basic::BasicClient;
     use oauth2::url::Url;
+    use oauth2::{AuthUrl, ClientId, ClientSecret, CsrfToken, TokenUrl};
     use reqwest::StatusCode;
     use serial_test::serial;
     use std::fs;
+    use std::io::{Read, Write};
+    use std::net::TcpStream;
+    use std::thread;
     use std::time::{SystemTime, UNIX_EPOCH};
 
-    #[tokio::test]
+    #[test]
     #[serial]
-    async fn test_write_auth_token_invalid_dir_returns_error() {
+    fn test_write_auth_token_invalid_dir_returns_error() {
         let token = get_mock_token(None);
 
         let mut mock_utils = MockIUtils::new();
@@ -53,9 +59,9 @@ mod tests {
         }
     }
 
-    #[tokio::test]
+    #[test]
     #[serial]
-    async fn test_write_auth_token_writes_token_to_file() {
+    fn test_write_auth_token_writes_token_to_file() {
         let token = get_mock_token(None);
 
         let utils = Utils::new();
@@ -71,9 +77,9 @@ mod tests {
         assert!(result.is_ok());
     }
 
-    #[tokio::test]
+    #[test]
     #[serial]
-    async fn test_write_auth_token_current_dir_error_returns_error() {
+    fn test_write_auth_token_current_dir_error_returns_error() {
         let error_message = "some error";
         let token = get_mock_token(None);
 
@@ -101,9 +107,9 @@ mod tests {
         }
     }
 
-    #[tokio::test]
+    #[test]
     #[serial]
-    async fn test_file_exists_random_dir_returns_false() {
+    fn test_file_exists_random_dir_returns_false() {
         let mut mock_utils = MockIUtils::new();
         mock_utils
             .expect_get_current_project_directory()
@@ -121,9 +127,9 @@ mod tests {
         assert!(!result.unwrap());
     }
 
-    #[tokio::test]
+    #[test]
     #[serial]
-    async fn test_file_exists_get_current_dir_fails_returns_error() {
+    fn test_file_exists_get_current_dir_fails_returns_error() {
         let error_message = "some error";
 
         let mut mock_utils = MockIUtils::new();
@@ -246,41 +252,6 @@ mod tests {
         assert_eq!(logs.len(), 0);
     }
 
-    #[tokio::test]
-    #[serial]
-    async fn test_get_auth_token() {
-        // let mut mock_utils = MockIUtils::new();
-        // let mut mock_http_handler = MockIHttpRequestHandler::new();
-        // let mock_client = reqwest::Client::new();
-
-        // mock_utils
-        //     .expect_get_current_project_directory()
-        //     .returning(|| Ok(String::from("/mock/directory")));
-        // mock_utils.expect_read_configuration_file().returning(|| {
-        //     Ok(Config {
-        //         mac_address: String::from("Some mac address"),
-        //         client_id: String::from("mock_client_id"),
-        //         client_secret: String::from("mock_secret"),
-        //     })
-        // });
-        // mock_http_handler
-        //     .expect_handle_http_request()
-        //     .returning(|_| Ok(mock_response(reqwest::StatusCode::OK, "some body")));
-
-        // let sut = Authorization {
-        //     utils: &mock_utils,
-        //     http_request_handler: &mock_http_handler,
-        //     http_client: &mock_client,
-        // };
-
-        // let client_id = String::from("mock_client_id");
-        // let secret = String::from("mock_secret");
-
-        // let result = sut.get_auth_token(client_id, secret).await;
-
-        // assert!(result.is_ok());
-    }
-
     #[test]
     fn test_is_access_token_expired_expired_token() {
         let expired_time = SystemTime::now()
@@ -344,49 +315,60 @@ mod tests {
         );
     }
 
-    #[tokio::test]
-    async fn test_get_token_from_tcp_listener() {
-        // let client_id = String::from("");
-        // let client_secret = String::from("");
-        // // Prepare a mock OAuth2 client
-        // let client = BasicClient::new(
-        //     ClientId::new(client_id),
-        //     Some(ClientSecret::new(client_secret)),
-        //     AuthUrl::new("https://www.fitbit.com/oauth2/authorize".to_string()).unwrap(),
-        //     Some(TokenUrl::new("https://api.fitbit.com/oauth2/token".to_string()).unwrap()),
-        // );
-        //
-        // let csrf_state = CsrfToken::new("test_csrf_state".to_string());
-        // // let request =
-        // // "GET /?code=test_auth_code&state=test_csrf_state HTTP/1.1\r\nHost: localhost\r\n\r\n";
-        //
-        // // std::thread::spawn(move || async {
-        // //     let url = "http://127.0.0.1:8080/";
-        // //     let client1 = reqwest::Client::new();
-        // //     let _response = client1.get(url).send().await.unwrap();
-        // // });
-        //
-        // let sut = Authorization {
-        //     utils: &MockIUtils::new(),
-        //     http_request_handler: &MockIHttpRequestHandler::new(),
-        //     http_client: &reqwest::Client::new(),
-        // };
-        //
-        // let result = sut.get_token_from_tcp_listener(client, csrf_state).await;
-        //
-        // std::thread::spawn(move || async {
-        //     let url = "http://127.0.0.1:8080/";
-        //     let client1 = reqwest::Client::new();
-        //     let _response = client1.get(url).send().await.unwrap();
-        // });
-        //
-        // match result {
-        //     Ok(token) => {
-        //         assert_eq!(token.access_token, "expected_access_token");
-        //         assert_eq!(token.refresh_token, "expected_refresh_token");
-        //     }
-        //     Err(e) => panic!("Test failed with error: {:?}", e),
-        // }
+    #[test]
+    fn test_get_token_from_tcp_listener() {
+        let client_id = String::from("");
+        let client_secret = String::from("");
+        let mock_code = "mock_code";
+        let mock_state = "test_csrf_state";
+
+        let client = BasicClient::new(
+            ClientId::new(client_id),
+            Some(ClientSecret::new(client_secret)),
+            AuthUrl::new("https://www.fitbit.com/oauth2/authorize".to_string()).unwrap(),
+            Some(TokenUrl::new("https://api.fitbit.com/oauth2/token".to_string()).unwrap()),
+        );
+
+        let csrf_state = CsrfToken::new(mock_state.to_string());
+
+        thread::spawn(move || {
+            let sut = Authorization {
+                utils: &MockIUtils::new(),
+                http_request_handler: &MockIHttpRequestHandler::new(),
+                http_client: &reqwest::Client::new(),
+            };
+
+            let result = block_on(sut.get_token_from_tcp_listener(client, csrf_state));
+            assert!(result.is_ok(), "Failed to retrieve token: {:?}", result);
+            let token = result.unwrap();
+            assert_eq!(token.access_token, mock_code);
+            assert_eq!(token.refresh_token, "");
+        });
+
+        let mut buffer = [0; 1024];
+
+        thread::sleep(std::time::Duration::from_millis(100));
+
+        let mut stream = TcpStream::connect("127.0.0.1:8080").expect("Failed to connect to server");
+        let message = format!(
+            "GET /path?code={mock_code}&state={mock_state} HTTP/1.1\r\nHost: 127.0.0.1\r\n\r\n"
+        );
+
+        stream
+            .write_all(message.as_bytes())
+            .expect("Failed to write to stream");
+
+        stream
+            .read(&mut buffer)
+            .expect("Failed to read from stream");
+
+        let data = buffer
+            .into_iter()
+            .map(|p| char::from(p))
+            .filter(|p| *p != '\0')
+            .collect::<String>();
+
+        assert_eq!(data, "HTTP/1.1 200 OK\r\ncontent-length: 48\r\n\r\nToken has been retrieved. You may close the tab.")
     }
 
     #[tokio::test]
