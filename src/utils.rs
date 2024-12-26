@@ -25,7 +25,6 @@ impl IUtils for Utils {
     fn get_current_project_directory(&self) -> Result<String, CliError> {
         let mut current_project_path: PathBuf = env::current_exe()?;
 
-        println!("{:?}", current_project_path);
         current_project_path.pop(); // MiCompositionScale2
         current_project_path.pop(); // debug
         current_project_path.pop(); // target

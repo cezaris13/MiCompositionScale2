@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use crate::cli_error::CliError;
 use crate::data_types::token::{Payload, Token};
 use crate::http_request_handler::IHttpRequestHandler;
@@ -20,6 +21,7 @@ use serde_json::{from_str, from_value};
 use std::fs::{self, File};
 use std::io::{BufRead, BufReader, Write};
 use std::net::TcpListener;
+use std::net::TcpStream;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 #[cfg(test)]
@@ -59,6 +61,8 @@ pub trait IAuthorization: Sync {
     async fn refresh_access_token(&self) -> Result<String, CliError>;
     fn is_access_token_expired(&self, access_token: &String) -> Result<bool, CliError>;
     async fn get_token(&self, client_id: String, client_secret: String) -> Result<Token, CliError>;
+    fn get_url_from_stream(&self, stream: &std::net::TcpStream) -> Result<Url, CliError>;
+    fn get_key_value_from_url(&self, url: &Url, key_parameter: &str) -> Result<String, CliError>;
 }
 
 #[async_trait]
@@ -169,54 +173,18 @@ impl<'a> IAuthorization for Authorization<'a> {
             .add_scope(Scope::new("profile".to_string()))
             .add_scope(Scope::new("weight".to_string()))
             .url();
+
         opener::open(authorize_url.to_string())?;
         let listener = TcpListener::bind("127.0.0.1:8080")?;
         for stream in listener.incoming() {
             if let Ok(mut stream) = stream {
-                let code: AuthorizationCode;
+                let url = self.get_url_from_stream(&stream)?;
 
-                let state: CsrfToken;
-                {
-                    let mut reader: BufReader<&std::net::TcpStream> = BufReader::new(&stream);
+                let value = self.get_key_value_from_url(&url, "code")?;
+                let code = AuthorizationCode::new(value);
 
-                    let mut request_line: String = String::new();
-                    reader.read_line(&mut request_line)?;
-
-                    let redirect_url = match request_line.split_whitespace().nth(1) {
-                        Some(element) => element,
-                        None => {
-                            return Err(CliError::Error(String::from(
-                                "No element has been provided",
-                            )))
-                        }
-                    };
-
-                    let url = Url::parse(&("http://localhost".to_string() + redirect_url))?;
-
-                    let code_pair: (std::borrow::Cow<'_, str>, std::borrow::Cow<'_, str>) = url
-                        .query_pairs()
-                        .find(
-                            |pair: &(std::borrow::Cow<'_, str>, std::borrow::Cow<'_, str>)| {
-                                let &(ref key, _) = pair;
-                                key == "code"
-                            },
-                        )
-                        .unwrap();
-
-                    let (_, value) = code_pair;
-                    code = AuthorizationCode::new(value.into_owned());
-
-                    let state_pair: (std::borrow::Cow<'_, str>, std::borrow::Cow<'_, str>) = url
-                        .query_pairs()
-                        .find(|pair| {
-                            let &(ref key, _) = pair;
-                            key == "state"
-                        })
-                        .unwrap();
-
-                    let (_, value) = state_pair;
-                    state = CsrfToken::new(value.into_owned());
-                }
+                let value = self.get_key_value_from_url(&url, "state")?;
+                let state = CsrfToken::new(value);
 
                 let message = "Token has been retrieved. You may close the tab.";
                 let response = format!(
@@ -260,5 +228,39 @@ impl<'a> IAuthorization for Authorization<'a> {
         }
 
         unreachable!();
+    }
+
+    fn get_url_from_stream(&self, stream: &TcpStream) -> Result<Url, CliError> {
+        let mut reader: BufReader<&TcpStream> = BufReader::new(&stream);
+
+        let mut request_line: String = String::new();
+        reader.read_line(&mut request_line)?;
+
+        let redirect_url = match request_line.split_whitespace().nth(1) {
+            Some(element) => element,
+            None => {
+                return Err(CliError::Error(String::from(
+                    "No element has been provided",
+                )))
+            }
+        };
+
+        Ok(Url::parse(&("http://localhost".to_string() + redirect_url))?)
+    }
+
+    fn get_key_value_from_url(&self, url: &Url, key_parameter: &str) -> Result<String, CliError> {
+        let pair = url
+            .query_pairs()
+            .find(
+                |pair: &(Cow<'_, str>, Cow<'_, str>)| {
+                    let &(ref key, _) = pair;
+                    key == key_parameter
+                },
+            );
+
+        match pair {
+            Some((_,value)) => Ok(value.into_owned()),
+            None => Err(CliError::Error(format!("Value for key {key_parameter} was not found"))),
+        }
     }
 }
