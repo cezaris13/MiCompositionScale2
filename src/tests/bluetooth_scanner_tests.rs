@@ -49,8 +49,10 @@ mod tests {
                 &mut previous_packet,
             )
             .await;
+
         assert!(result.is_ok());
         assert_eq!(previous_packet, raw_data);
+
         let logs = logger_ref.get_logs();
         assert_eq!(logs.len(), 1);
         assert_eq!(
@@ -64,6 +66,7 @@ mod tests {
         let result = sut
             .process_service_data_advertisement(id, service_data, &mut previous_packet)
             .await;
+
         assert!(result.is_ok());
 
         let logs = logger_ref.get_logs();
@@ -83,8 +86,6 @@ mod tests {
             .expect_read_configuration_file()
             .returning(|| Ok(get_mock_config()));
 
-        let mock_packet_processor = MockIPacketDataProcessor::new();
-
         let mut previous_packet = vec![];
         let mut service_data = HashMap::new();
 
@@ -97,7 +98,11 @@ mod tests {
 
         service_data.insert(uuid, raw_data.clone());
 
-        let sut = BluetoothScanner::new(&mock_packet_processor, &mock_utils);
+        let sut = BluetoothScanner {
+            packet_data_processor: &MockIPacketDataProcessor::new(),
+            utils: &mock_utils,
+        };
+
         let result = sut
             .process_service_data_advertisement(id, service_data.clone(), &mut previous_packet)
             .await;
@@ -129,8 +134,6 @@ mod tests {
             .expect_read_configuration_file()
             .returning(|| Ok(get_mock_config()));
 
-        let mock_packet_processor = MockIPacketDataProcessor::new();
-
         let mut previous_packet = vec![];
         let mut service_data = HashMap::new();
 
@@ -143,7 +146,11 @@ mod tests {
 
         service_data.insert(uuid, raw_data.clone());
 
-        let sut = BluetoothScanner::new(&mock_packet_processor, &mock_utils);
+        let sut = BluetoothScanner {
+            packet_data_processor: &MockIPacketDataProcessor::new(),
+            utils: &mock_utils,
+        };
+
         let result = sut
             .process_service_data_advertisement(id, service_data.clone(), &mut previous_packet)
             .await;

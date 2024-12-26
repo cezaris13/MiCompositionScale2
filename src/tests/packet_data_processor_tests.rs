@@ -20,7 +20,6 @@ mod tests {
         let packet_data = get_test_packet_data(None);
 
         let mut mock_fitbit_api_manager = MockIFitbitApiManager::new();
-
         mock_fitbit_api_manager
             .expect_get_user_data()
             .times(1)
@@ -63,7 +62,6 @@ mod tests {
         let packet_data = get_test_packet_data(Some(false));
 
         let mut mock_fitbit_api_manager = MockIFitbitApiManager::new();
-
         mock_fitbit_api_manager
             .expect_get_user_data()
             .times(1)
@@ -99,7 +97,6 @@ mod tests {
         let packet_data = get_test_packet_data(None);
 
         let mut mock_fitbit_api_manager = MockIFitbitApiManager::new();
-
         mock_fitbit_api_manager
             .expect_get_user_data()
             .times(1)
@@ -135,7 +132,6 @@ mod tests {
         let packet_data = get_test_packet_data(None);
 
         let mut mock_fitbit_api_manager = MockIFitbitApiManager::new();
-
         mock_fitbit_api_manager
             .expect_get_user_data()
             .times(1)
@@ -167,9 +163,9 @@ mod tests {
 
         let packet_data = get_test_packet_data(None);
 
-        let mut mock_fitbit_api_manager = MockIFitbitApiManager::new();
-
         let error = "Some error";
+
+        let mut mock_fitbit_api_manager = MockIFitbitApiManager::new();
         mock_fitbit_api_manager
             .expect_get_user_data()
             .times(1)
@@ -198,10 +194,9 @@ mod tests {
         let packet_data = get_test_packet_data(None);
         let user_data = get_test_user_data(None);
 
-        let mut mock_fitbit_api_manager = MockIFitbitApiManager::new();
-
         let error = "Some error";
 
+        let mut mock_fitbit_api_manager = MockIFitbitApiManager::new();
         mock_fitbit_api_manager
             .expect_get_user_data()
             .times(1)
