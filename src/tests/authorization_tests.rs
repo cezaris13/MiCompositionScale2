@@ -10,6 +10,7 @@ mod tests {
     use crate::utils::MockIUtils;
     use crate::utils::{IUtils, Utils};
 
+    use oauth2::url::Url;
     use reqwest::StatusCode;
     use serial_test::serial;
     use std::fs;
@@ -648,5 +649,39 @@ mod tests {
         let logs = logger_ref.get_logs();
 
         assert_eq!(logs.len(), 0);
+    }
+
+    #[test]
+    fn test_get_key_value_from_url_returns_the_value() {
+        let url = Url::parse("http://localhost/callback?code=123&state=abc").unwrap();
+
+        let sut = Authorization {
+            utils: &MockIUtils::new(),
+            http_request_handler: &MockIHttpRequestHandler::new(),
+            http_client: &reqwest::Client::new(),
+        };
+
+        let result = sut.get_key_value_from_url(&url, "code");
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), "123");
+    }
+
+    #[test]
+    fn test_get_key_value_from_url_value_does_not_exist_returns_error() {
+        let url = Url::parse("http://localhost/callback?code=123&state=abc").unwrap();
+        let nonexistent_value = "nonexistent";
+
+        let sut = Authorization {
+            utils: &MockIUtils::new(),
+            http_request_handler: &MockIHttpRequestHandler::new(),
+            http_client: &reqwest::Client::new(),
+        };
+
+        let result = sut.get_key_value_from_url(&url, nonexistent_value);
+        assert!(result.is_err());
+        assert_eq!(
+            result.unwrap_err().to_string(),
+            format!("Error in program: Value for key {nonexistent_value} was not found")
+        );
     }
 }
