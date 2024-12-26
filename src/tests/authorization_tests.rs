@@ -12,7 +12,9 @@ mod tests {
     use crate::utils::MockIUtils;
     use crate::utils::{IUtils, Utils};
 
+    use oauth2::basic::BasicClient;
     use oauth2::url::Url;
+    use oauth2::{AuthUrl, ClientId, ClientSecret, CsrfToken, TokenUrl};
     use reqwest::StatusCode;
     use serial_test::serial;
     use std::fs;

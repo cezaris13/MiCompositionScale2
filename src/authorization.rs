@@ -1,11 +1,12 @@
-use std::borrow::Cow;
 use crate::cli_error::CliError;
 use crate::data_types::token::{Payload, Token};
 use crate::http_request_handler::IHttpRequestHandler;
 use crate::utils::IUtils;
+use std::borrow::Cow;
 
 use async_trait::async_trait;
 use base64::{prelude::BASE64_STANDARD, Engine};
+use basic::{BasicErrorResponseType, BasicTokenType};
 use jsonwebtokens::raw::{self, decode_json_token_slice, TokenSlices};
 use log::{error, info};
 use mockall::{automock, predicate::*};
@@ -13,7 +14,9 @@ use oauth2::basic::BasicClient;
 use oauth2::reqwest::async_http_client;
 use oauth2::url::Url;
 use oauth2::{
-    AuthUrl, AuthorizationCode, ClientId, ClientSecret, CsrfToken, Scope, TokenResponse, TokenUrl,
+    basic, AuthUrl, AuthorizationCode, ClientId, ClientSecret, CsrfToken, EmptyExtraTokenFields,
+    RevocationErrorResponseType, Scope, StandardErrorResponse, StandardRevocableToken,
+    StandardTokenIntrospectionResponse, StandardTokenResponse, TokenResponse, TokenUrl,
 };
 use reqwest::header::{AUTHORIZATION, CONTENT_TYPE};
 use reqwest::Client;
@@ -23,6 +26,15 @@ use std::io::{BufRead, BufReader, Write};
 use std::net::TcpListener;
 use std::net::TcpStream;
 use std::time::{SystemTime, UNIX_EPOCH};
+
+type OAuth2Client = oauth2::Client<
+    StandardErrorResponse<BasicErrorResponseType>,
+    StandardTokenResponse<EmptyExtraTokenFields, BasicTokenType>,
+    BasicTokenType,
+    StandardTokenIntrospectionResponse<EmptyExtraTokenFields, BasicTokenType>,
+    StandardRevocableToken,
+    StandardErrorResponse<RevocationErrorResponseType>,
+>;
 
 #[cfg(test)]
 #[path = "./tests/authorization_tests.rs"]
@@ -63,6 +75,11 @@ pub trait IAuthorization: Sync {
     async fn get_token(&self, client_id: String, client_secret: String) -> Result<Token, CliError>;
     fn get_url_from_stream(&self, stream: &TcpStream) -> Result<Url, CliError>;
     fn get_key_value_from_url(&self, url: &Url, key_parameter: &str) -> Result<String, CliError>;
+    async fn get_token_from_tcp_listener(
+        &self,
+        client: OAuth2Client,
+        csrf_state: CsrfToken,
+    ) -> Result<Token, CliError>;
 }
 
 #[async_trait]
@@ -175,6 +192,50 @@ impl<'a> IAuthorization for Authorization<'a> {
             .url();
 
         opener::open(authorize_url.to_string())?;
+
+        self.get_token_from_tcp_listener(client, csrf_state).await
+    }
+
+    fn get_url_from_stream(&self, stream: &TcpStream) -> Result<Url, CliError> {
+        let mut reader: BufReader<&TcpStream> = BufReader::new(&stream);
+
+        let mut request_line: String = String::new();
+        reader.read_line(&mut request_line)?;
+
+        let redirect_url = match request_line.split_whitespace().nth(1) {
+            Some(element) => element,
+            None => {
+                return Err(CliError::Error(String::from(
+                    "No element has been provided",
+                )))
+            }
+        };
+
+        Ok(Url::parse(
+            &("http://localhost".to_string() + redirect_url),
+        )?)
+    }
+    fn get_key_value_from_url(&self, url: &Url, key_parameter: &str) -> Result<String, CliError> {
+        let pair = url
+            .query_pairs()
+            .find(|pair: &(Cow<'_, str>, Cow<'_, str>)| {
+                let &(ref key, _) = pair;
+                key == key_parameter
+            });
+
+        match pair {
+            Some((_, value)) => Ok(value.into_owned()),
+            None => Err(CliError::Error(format!(
+                "Value for key {key_parameter} was not found"
+            ))),
+        }
+    }
+
+    async fn get_token_from_tcp_listener(
+        &self,
+        client: OAuth2Client,
+        csrf_state: CsrfToken,
+    ) -> Result<Token, CliError> {
         let listener = TcpListener::bind("127.0.0.1:8080")?;
         for stream in listener.incoming() {
             if let Ok(mut stream) = stream {
@@ -226,41 +287,6 @@ impl<'a> IAuthorization for Authorization<'a> {
                 });
             }
         }
-
         unreachable!();
-    }
-
-    fn get_url_from_stream(&self, stream: &TcpStream) -> Result<Url, CliError> {
-        let mut reader: BufReader<&TcpStream> = BufReader::new(&stream);
-
-        let mut request_line: String = String::new();
-        reader.read_line(&mut request_line)?;
-
-        let redirect_url = match request_line.split_whitespace().nth(1) {
-            Some(element) => element,
-            None => {
-                return Err(CliError::Error(String::from(
-                    "No element has been provided",
-                )))
-            }
-        };
-
-        Ok(Url::parse(&("http://localhost".to_string() + redirect_url))?)
-    }
-
-    fn get_key_value_from_url(&self, url: &Url, key_parameter: &str) -> Result<String, CliError> {
-        let pair = url
-            .query_pairs()
-            .find(
-                |pair: &(Cow<'_, str>, Cow<'_, str>)| {
-                    let &(ref key, _) = pair;
-                    key == key_parameter
-                },
-            );
-
-        match pair {
-            Some((_,value)) => Ok(value.into_owned()),
-            None => Err(CliError::Error(format!("Value for key {key_parameter} was not found"))),
-        }
     }
 }
