@@ -6,22 +6,23 @@ mod tests {
     use crate::cli_error::CliError;
     use crate::http_request_handler::MockIHttpRequestHandler;
     use crate::tests::utils::test_data::{
-        test_config, test_response, test_stream, test_token, test_token_as_string,
+        test_config, test_response, test_stream, test_tcp_client_get_data, test_token,
+        test_token_as_string,
     };
     use crate::tests::utils::vector_logger::LOGGER;
     use crate::utils::MockIUtils;
     use crate::utils::{IUtils, Utils};
 
     use oauth2::url::Url;
-    use oauth2::{AuthorizationCode, CsrfToken};
+    use oauth2::CsrfToken;
     use reqwest::StatusCode;
     use serial_test::serial;
     use std::fs;
-    use std::io::{Read, Write};
-    use std::net::TcpStream;
-    use std::sync::{Arc, Mutex};
+    use std::sync::mpsc::channel;
     use std::thread;
+    use std::time::Duration;
     use std::time::{SystemTime, UNIX_EPOCH};
+    use thread::{sleep, spawn};
 
     #[test]
     #[serial]
@@ -41,20 +42,17 @@ mod tests {
 
         let result = sut.write_auth_token(token);
 
-        assert!(result.is_err());
-
-        if let Err(CliError::IOError(ref error)) = result {
-            assert_eq!(
+        match result {
+            Err(CliError::IOError(ref error)) => assert_eq!(
                 format!("{:?}", error),
                 String::from(
                     "Os { code: 2, kind: NotFound, message: \"No such file or directory\" }"
                 )
-            );
-        } else {
-            assert!(
+            ),
+            _ => assert!(
                 false,
                 "Expected error: CliError::IOError(\"some error\"), but got a different result"
-            );
+            ),
         }
     }
 
@@ -94,15 +92,12 @@ mod tests {
         };
         let result = sut.write_auth_token(token);
 
-        assert!(result.is_err());
-
-        if let Err(CliError::Error(ref message)) = result {
-            assert_eq!(message, error_message);
-        } else {
-            assert!(
+        match result {
+            Err(CliError::Error(ref error)) => assert_eq!(error, error_message),
+            _ => assert!(
                 false,
                 "Expected error: CliError::Error(\"some error\"), but got a different result"
-            );
+            ),
         }
     }
 
@@ -146,13 +141,12 @@ mod tests {
 
         assert!(result.is_err());
 
-        if let Err(CliError::Error(ref message)) = result {
-            assert_eq!(message, error_message);
-        } else {
-            assert!(
+        match result {
+            Err(CliError::Error(ref error)) => assert_eq!(error, error_message),
+            _ => assert!(
                 false,
                 "Expected error: CliError::Error(\"some error\"), but got a different result"
-            );
+            ),
         }
     }
 
@@ -779,54 +773,33 @@ mod tests {
         let mock_state = "test_csrf_state";
 
         let csrf_state = CsrfToken::new(mock_state.to_string());
-        let result: Arc<Mutex<Option<Result<AuthorizationCode, CliError>>>> =
-            Arc::new(Mutex::new(None));
+        let (tx, rx) = channel();
 
-        let data = Arc::clone(&result);
-        let server = thread::spawn(move || {
+        spawn(move || {
             let sut = Authorization {
                 utils: &MockIUtils::new(),
                 http_request_handler: &MockIHttpRequestHandler::new(),
                 http_client: &reqwest::Client::new(),
             };
-            let mut data = data.lock().unwrap();
-            *data = Some(sut.get_code_from_tcp_listener(csrf_state));
+
+            let result = sut.get_code_from_tcp_listener(csrf_state);
+            if tx.send(result).is_err() {
+                eprintln!("Failed to send the result to the main thread");
+            }
         });
 
-        thread::sleep(std::time::Duration::from_millis(100));
+        sleep(Duration::from_millis(100));
 
-        let mut buffer = [0; 1024];
-
-        let mut stream = TcpStream::connect("127.0.0.1:8080").expect("Failed to connect to server");
         let message = format!(
             "GET /path?code={mock_code}&state={mock_state} HTTP/1.1\r\nHost: 127.0.0.1\r\n\r\n"
         );
 
-        stream
-            .write_all(message.as_bytes())
-            .expect("Failed to write to stream");
-
-        stream
-            .read(&mut buffer)
-            .expect("Failed to read from stream");
-
-        let data = buffer
-            .into_iter()
-            .map(|p| char::from(p))
-            .filter(|p| *p != '\0')
-            .collect::<String>();
-
+        let data = test_tcp_client_get_data(message);
         assert_eq!(data, "HTTP/1.1 200 OK\r\ncontent-length: 48\r\n\r\nToken has been retrieved. You may close the tab.");
 
-        let _ = server.join();
-
-        let result = Arc::clone(&result);
-        let result = result.lock().unwrap();
-        assert!(!result.is_none());
-        let result = result.as_ref().unwrap();
-
-        assert!(result.is_ok());
-        let code = result.as_ref().unwrap();
-        assert_eq!(code.secret(), mock_code);
+        match rx.recv() {
+            Ok(Ok(result)) => assert_eq!(result.secret(), mock_code),
+            _ => assert!(false, "Failed to receive the result"),
+        };
     }
 }

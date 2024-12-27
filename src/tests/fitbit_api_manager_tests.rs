@@ -66,13 +66,12 @@ mod tests {
         let user_data = sut.get_user_data().await;
 
         assert!(user_data.is_err());
-        if let Err(CliError::Error(ref message)) = user_data {
-            assert_eq!(message, error_message);
-        } else {
-            assert!(
+        match user_data {
+            Err(CliError::Error(ref error)) => assert_eq!(error, error_message),
+            _ => assert!(
                 false,
                 "Expected error: CliError::Error(\"some error\"), but got a different result"
-            );
+            ),
         }
     }
 
@@ -100,14 +99,12 @@ mod tests {
 
         let user_data = sut.get_user_data().await;
 
-        assert!(user_data.is_err());
-        if let Err(CliError::Error(ref message)) = user_data {
-            assert_eq!(message, error_message);
-        } else {
-            assert!(
+        match user_data {
+            Err(CliError::Error(ref error)) => assert_eq!(error, error_message),
+            _ => assert!(
                 false,
                 "Expected error: CliError::Error(\"some error\"), but got a different result"
-            );
+            ),
         }
     }
 
@@ -139,14 +136,12 @@ mod tests {
 
         let user_data = sut.get_user_data().await;
 
-        assert!(user_data.is_err());
-        if let Err(CliError::Error(ref message)) = user_data {
-            assert_eq!(message, error_message);
-        } else {
-            assert!(
+        match user_data {
+            Err(CliError::Error(ref error)) => assert_eq!(error, error_message),
+            _ => assert!(
                 false,
                 "Expected error: CliError::Error(\"some error\"), but got a different result"
-            );
+            ),
         }
     }
 
@@ -176,16 +171,14 @@ mod tests {
 
         let user_data = sut.get_user_data().await;
 
-        println!("{:?}", user_data);
-        assert!(user_data.is_err());
-        if let Err(CliError::ParseError(ref message)) = user_data {
-            assert_eq!(format!("{message}"), "expected value at line 1 column 1");
-        } else {
-            assert!(
+        match user_data {
+            Err(CliError::ParseError(ref error)) =>
+                assert_eq!(format!("{message}"), "expected value at line 1 column 1"),
+            _ => assert!(
                 false,
-                "Expected error: CliError::Error(\"some error\"), but got a different result"
-            );
-        }
+                "Expected error: CliError::ParseError(\"some error\"), but got a different result"
+            ),
+        };
     }
 
     #[tokio::test]
@@ -238,15 +231,13 @@ mod tests {
 
         let response = sut.update_body_fat(20.0, Utc::now()).await;
 
-        assert!(response.is_err());
-        if let Err(CliError::Error(ref message)) = response {
-            assert_eq!(message, error_message);
-        } else {
-            assert!(
+        match response {
+            Err(CliError::Error(ref error)) => assert_eq!(error, error_message),
+            _ => assert!(
                 false,
                 "Expected error: CliError::Error(\"some error\"), but got a different result"
-            );
-        }
+            ),
+        };
     }
 
     #[tokio::test]
@@ -299,14 +290,12 @@ mod tests {
 
         let response = sut.update_body_weight(80.0, Utc::now()).await;
 
-        assert!(response.is_err());
-        if let Err(CliError::Error(ref message)) = response {
-            assert_eq!(message, error_message);
-        } else {
-            assert!(
+        match response {
+            Err(CliError::Error(ref error)) => assert_eq!(error, error_message),
+            _ => assert!(
                 false,
                 "Expected error: CliError::Error(\"some error\"), but got a different result"
-            );
-        }
+            ),
+        };
     }
 }

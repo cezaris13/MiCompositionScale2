@@ -40,16 +40,15 @@ mod tests {
         let result = handler.handle_http_request(Ok(response));
 
         assert!(result.is_err());
-        if let Err(CliError::Error(ref message)) = result {
-            assert_eq!(
-                message,
+        match result {
+            Err(CliError::Error(ref error)) => assert_eq!(
+                error,
                 "Failed to get data from the request: status code 400 Bad Request"
-            );
-        } else {
-            assert!(
+            ),
+            _ => assert!(
                 false,
                 "Expected error: CliError::Error(\"some error\"), but got a different result"
-            );
+            ),
         }
     }
 
@@ -61,16 +60,12 @@ mod tests {
         let result = sut.handle_http_request(response);
 
         assert!(result.is_err());
-        if let Err(CliError::Error(ref message)) = result {
-            assert_eq!(
-                message,
-                "HTTP status client error (400 Bad Request) for url (http://no.url.provided.local/)"
-            );
-        } else {
-            assert!(
+        match result {
+            Err(CliError::Error(ref error)) => assert_eq!(error, "HTTP status client error (400 Bad Request) for url (http://no.url.provided.local/)"),
+            _ => assert!(
                 false,
                 "Expected error: CliError::Error(\"some error\"), but got a different result"
-            );
+            ),
         }
     }
 

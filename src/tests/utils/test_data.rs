@@ -11,7 +11,7 @@ use http::Response as HttpResponse;
 use mockall::predicate::*;
 use reqwest::{Response, StatusCode};
 use serde_json::{json, to_vec};
-use std::io::Write;
+use std::io::{Read, Write};
 use std::net::{TcpListener, TcpStream};
 
 pub fn test_response(status: StatusCode, body: &str) -> Response {
@@ -124,4 +124,22 @@ pub fn test_token_as_string(exp: u64) -> String {
     let header = URL_SAFE_NO_PAD.encode(b"{}"); // Empty JSON header
     let signature = "signature"; // Signature can be any placeholder
     format!("{header}.{encoded_claims}.{signature}")
+}
+
+pub fn test_tcp_client_get_data(message: String) -> String {
+    let mut buffer = [0; 1024];
+    let mut stream = TcpStream::connect("127.0.0.1:8080").expect("Failed to connect to server");
+
+    stream
+        .write_all(message.as_bytes())
+        .expect("Failed to write to stream");
+
+    stream
+        .read(&mut buffer)
+        .expect("Failed to read from stream");
+    buffer
+        .into_iter()
+        .map(|p| char::from(p))
+        .filter(|p| *p != '\0')
+        .collect::<String>()
 }
