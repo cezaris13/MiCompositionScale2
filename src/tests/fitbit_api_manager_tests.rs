@@ -172,8 +172,9 @@ mod tests {
         let user_data = sut.get_user_data().await;
 
         match user_data {
-            Err(CliError::ParseError(ref error)) =>
-                assert_eq!(format!("{message}"), "expected value at line 1 column 1"),
+            Err(CliError::ParseError(ref message)) => {
+                assert_eq!(format!("{message}"), "expected value at line 1 column 1")
+            }
             _ => assert!(
                 false,
                 "Expected error: CliError::ParseError(\"some error\"), but got a different result"
