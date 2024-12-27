@@ -8,7 +8,7 @@ mod tests {
     use std::time::{Duration, SystemTime};
 
     #[test]
-    fn test_display_messages() {
+    fn display_messages() {
         assert_eq!(
             format!(
                 "{}",
@@ -70,7 +70,7 @@ mod tests {
     }
 
     #[test]
-    fn test_source() {
+    fn source() {
         let json_error = serde_json::from_str::<User>("some random").err().unwrap();
         let json_error1 = serde_json::from_str::<User>("some random").err().unwrap();
         let cli_error = CliError::ParseError(json_error);
@@ -137,7 +137,7 @@ mod tests {
     }
 
     #[test]
-    fn test_from_error_macro() {
+    fn from_error_macro() {
         let json_error = serde_json::from_str::<User>("some random").err().unwrap();
         let cli_error: CliError = json_error.into();
         match cli_error {

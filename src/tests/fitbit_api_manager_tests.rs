@@ -6,13 +6,13 @@ mod tests {
     use crate::fitbit_api_manager::FitbitApiManager;
     use crate::fitbit_api_manager::IFitbitApiManager;
     use crate::http_request_handler::MockIHttpRequestHandler;
-    use crate::tests::test_utils::{get_mock_response, get_test_user_data_as_string};
+    use crate::tests::utils::test_data::{test_response, test_user_data_as_string};
 
     use chrono::Utc;
     use reqwest::StatusCode;
 
     #[tokio::test]
-    async fn test_get_user_data_success() {
+    async fn get_user_data_success() {
         let mock_client = reqwest::Client::new();
 
         let mut mock_authorization = MockIAuthorization::new();
@@ -23,11 +23,11 @@ mod tests {
         let mut mock_http_request_handler = MockIHttpRequestHandler::new();
         mock_http_request_handler
             .expect_handle_http_request()
-            .returning(|_| Ok(get_mock_response(StatusCode::OK, "some data")));
+            .returning(|_| Ok(test_response(StatusCode::OK, "some data")));
 
         mock_http_request_handler
             .expect_get_response_body()
-            .returning(|_| Ok(get_test_user_data_as_string()));
+            .returning(|_| Ok(test_user_data_as_string()));
 
         let sut = FitbitApiManager::new(
             &mock_authorization,
@@ -46,7 +46,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_get_user_data_bad_fails_to_get_access_token_returns_error() {
+    async fn get_user_data_bad_fails_to_get_access_token_returns_error() {
         let mock_http_request_handler = MockIHttpRequestHandler::new();
         let mock_client = reqwest::Client::new();
 
@@ -77,7 +77,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_get_user_data_bad_response_returns_error() {
+    async fn get_user_data_bad_response_returns_error() {
         let mock_client = reqwest::Client::new();
 
         let error_message = "some error";
@@ -112,7 +112,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_get_user_data_bad_response_body_returns_error() {
+    async fn get_user_data_bad_response_body_returns_error() {
         let mock_client = reqwest::Client::new();
 
         let error_message = "some error";
@@ -125,7 +125,7 @@ mod tests {
         let mut mock_http_request_handler = MockIHttpRequestHandler::new();
         mock_http_request_handler
             .expect_handle_http_request()
-            .returning(|_| Ok(get_mock_response(StatusCode::OK, "some data")));
+            .returning(|_| Ok(test_response(StatusCode::OK, "some data")));
 
         mock_http_request_handler
             .expect_get_response_body()
@@ -151,7 +151,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_get_user_data_wrong_type_of_data_is_received_returns_error() {
+    async fn get_user_data_wrong_type_of_data_is_received_returns_error() {
         let mock_client = reqwest::Client::new();
 
         let mut mock_authorization = MockIAuthorization::new();
@@ -162,7 +162,7 @@ mod tests {
         let mut mock_http_request_handler = MockIHttpRequestHandler::new();
         mock_http_request_handler
             .expect_handle_http_request()
-            .returning(|_| Ok(get_mock_response(StatusCode::OK, "some data")));
+            .returning(|_| Ok(test_response(StatusCode::OK, "some data")));
 
         mock_http_request_handler
             .expect_get_response_body()
@@ -189,7 +189,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_update_user_body_fat_success() {
+    async fn update_user_body_fat_success() {
         let mock_client = reqwest::Client::new();
 
         let response_body = "some data";
@@ -202,7 +202,7 @@ mod tests {
         let mut mock_http_request_handler = MockIHttpRequestHandler::new();
         mock_http_request_handler
             .expect_handle_http_request()
-            .returning(|_| Ok(get_mock_response(StatusCode::OK, response_body)));
+            .returning(|_| Ok(test_response(StatusCode::OK, response_body)));
 
         let sut = FitbitApiManager::new(
             &mock_authorization,
@@ -219,7 +219,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_update_user_body_fat_authorization_token_retrieval_fails_returns_error() {
+    async fn update_user_body_fat_authorization_token_retrieval_fails_returns_error() {
         let mock_http_request_handler = MockIHttpRequestHandler::new();
         let mock_client = reqwest::Client::new();
 
@@ -250,7 +250,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_update_user_body_weight_success() {
+    async fn update_user_body_weight_success() {
         let mock_client = reqwest::Client::new();
 
         let response_body = "some data";
@@ -263,7 +263,7 @@ mod tests {
         let mut mock_http_request_handler = MockIHttpRequestHandler::new();
         mock_http_request_handler
             .expect_handle_http_request()
-            .returning(|_| Ok(get_mock_response(StatusCode::OK, response_body)));
+            .returning(|_| Ok(test_response(StatusCode::OK, response_body)));
 
         let sut = FitbitApiManager::new(
             &mock_authorization,
@@ -280,7 +280,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_update_user_body_weight_authorization_token_retrieval_fails_returns_error() {
+    async fn update_user_body_weight_authorization_token_retrieval_fails_returns_error() {
         let mock_http_request_handler = MockIHttpRequestHandler::new();
         let mock_client = reqwest::Client::new();
 

@@ -3,14 +3,14 @@ mod tests {
     use crate::cli_error::CliError;
     use crate::http_request_handler::HttpRequestHandler;
     use crate::http_request_handler::IHttpRequestHandler;
-    use crate::tests::test_utils::get_mock_response;
+    use crate::tests::utils::test_data::test_response;
 
     use reqwest::StatusCode;
 
     #[tokio::test]
-    async fn test_handle_http_request_ok_status() {
+    async fn handle_http_request_ok_status() {
         let response_body = "OK response";
-        let response = get_mock_response(StatusCode::OK, response_body);
+        let response = test_response(StatusCode::OK, response_body);
 
         let sut = HttpRequestHandler::new();
         let result = sut.handle_http_request(Ok(response));
@@ -20,9 +20,9 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_handle_http_request_created_status() {
+    async fn handle_http_request_created_status() {
         let response_body = "Created response";
-        let response = get_mock_response(StatusCode::CREATED, response_body);
+        let response = test_response(StatusCode::CREATED, response_body);
 
         let sut = HttpRequestHandler::new();
         let result = sut.handle_http_request(Ok(response));
@@ -32,10 +32,10 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_handle_http_request_error_status() {
+    async fn handle_http_request_error_status() {
         let handler = HttpRequestHandler::new();
         let response_body = "Error response";
-        let response = get_mock_response(StatusCode::BAD_REQUEST, response_body);
+        let response = test_response(StatusCode::BAD_REQUEST, response_body);
 
         let result = handler.handle_http_request(Ok(response));
 
@@ -54,9 +54,8 @@ mod tests {
     }
 
     #[test]
-    fn test_handle_http_request_err_response() {
-        let response =
-            get_mock_response(StatusCode::BAD_REQUEST, "response body").error_for_status();
+    fn handle_http_request_err_response() {
+        let response = test_response(StatusCode::BAD_REQUEST, "response body").error_for_status();
 
         let sut = HttpRequestHandler::new();
         let result = sut.handle_http_request(response);
@@ -76,8 +75,8 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_get_response_body_ok() {
-        let response = get_mock_response(StatusCode::OK, "response body");
+    async fn get_response_body_ok() {
+        let response = test_response(StatusCode::OK, "response body");
 
         let sut = HttpRequestHandler::new();
         let result = sut.get_response_body(response).await;

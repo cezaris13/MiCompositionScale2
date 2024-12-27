@@ -3,8 +3,8 @@ mod tests {
     use crate::bluetooth_scanner::BluetoothScanner;
     use crate::bluetooth_scanner::IBluetoothScanner;
     use crate::packet_data_processor::MockIPacketDataProcessor;
-    use crate::tests::test_utils::{get_mock_config, get_packet_raw_data};
-    use crate::tests::vector_logger::LOGGER;
+    use crate::tests::utils::test_data::{test_config, test_packet_raw_data};
+    use crate::tests::utils::vector_logger::LOGGER;
     use crate::utils::MockIUtils;
 
     use btleplug::platform::PeripheralId;
@@ -15,14 +15,14 @@ mod tests {
     #[cfg(not(target_os = "linux"))]
     #[tokio::test]
     #[serial]
-    async fn test_process_service_data_advertisement() {
+    async fn process_service_data_advertisement() {
         LOGGER.clear_logs();
         let logger_ref = LOGGER.clone();
 
         let mut mock_utils = MockIUtils::new();
         mock_utils
             .expect_read_configuration_file()
-            .returning(|| Ok(get_mock_config()));
+            .returning(|| Ok(test_config()));
 
         let mut mock_packet_processor = MockIPacketDataProcessor::new();
         mock_packet_processor
@@ -37,7 +37,7 @@ mod tests {
 
         let uuid = Uuid::parse_str("0000181b-0000-1000-8000-00805f9b34fb").unwrap();
 
-        let raw_data: Vec<u8> = get_packet_raw_data(None);
+        let raw_data: Vec<u8> = test_packet_raw_data(None);
 
         service_data.insert(uuid, raw_data.clone());
 
@@ -77,14 +77,14 @@ mod tests {
     #[cfg(not(target_os = "linux"))]
     #[tokio::test]
     #[serial]
-    async fn test_process_service_data_advertisement_weight_removed_do_not_update() {
+    async fn process_service_data_advertisement_weight_removed_do_not_update() {
         LOGGER.clear_logs();
         let logger_ref = LOGGER.clone();
 
         let mut mock_utils = MockIUtils::new();
         mock_utils
             .expect_read_configuration_file()
-            .returning(|| Ok(get_mock_config()));
+            .returning(|| Ok(test_config()));
 
         let mut previous_packet = vec![];
         let mut service_data = HashMap::new();
@@ -94,7 +94,7 @@ mod tests {
 
         let uuid = Uuid::parse_str("0000181b-0000-1000-8000-00805f9b34fb").unwrap();
 
-        let raw_data: Vec<u8> = get_packet_raw_data(Some(true));
+        let raw_data: Vec<u8> = test_packet_raw_data(Some(true));
 
         service_data.insert(uuid, raw_data.clone());
 
@@ -125,14 +125,14 @@ mod tests {
     #[cfg(not(target_os = "linux"))]
     #[tokio::test]
     #[serial]
-    async fn test_process_service_data_advertisement_uuid_different_does_not_update() {
+    async fn process_service_data_advertisement_uuid_different_does_not_update() {
         LOGGER.clear_logs();
         let logger_ref = LOGGER.clone();
 
         let mut mock_utils = MockIUtils::new();
         mock_utils
             .expect_read_configuration_file()
-            .returning(|| Ok(get_mock_config()));
+            .returning(|| Ok(test_config()));
 
         let mut previous_packet = vec![];
         let mut service_data = HashMap::new();
@@ -142,7 +142,7 @@ mod tests {
 
         let uuid = Uuid::parse_str("0000181c-0000-1000-8000-00805f9b34fb").unwrap();
 
-        let raw_data: Vec<u8> = get_packet_raw_data(None);
+        let raw_data: Vec<u8> = test_packet_raw_data(None);
 
         service_data.insert(uuid, raw_data.clone());
 
