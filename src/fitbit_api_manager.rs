@@ -6,7 +6,8 @@ use crate::http_request_handler::IHttpRequestHandler;
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use mockall::{automock, predicate::*};
-use reqwest::{header::AUTHORIZATION, Client, Error, Response, Url};
+use reqwest::header::{AUTHORIZATION, CONTENT_LENGTH};
+use reqwest::{Client, Error, Response, Url};
 use serde_json::from_str;
 use std::string::String;
 
@@ -94,6 +95,7 @@ impl<'a> IFitbitApiManager for FitbitApiManager<'a> {
             .http_client
             .post(url)
             .header(AUTHORIZATION, format!("Bearer {access_token}"))
+            .header(CONTENT_LENGTH, 0)
             .send()
             .await;
 
@@ -121,6 +123,7 @@ impl<'a> IFitbitApiManager for FitbitApiManager<'a> {
             .http_client
             .post(url)
             .header(AUTHORIZATION, format!("Bearer {access_token}"))
+            .header(CONTENT_LENGTH, 0)
             .send()
             .await;
 
