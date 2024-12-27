@@ -1,6 +1,5 @@
 use log::{Level, LevelFilter, Log, Metadata, Record};
-use once_cell::sync::Lazy;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, LazyLock, Mutex};
 
 pub struct VectorLogger {
     logs: Arc<Mutex<Vec<String>>>,
@@ -41,7 +40,7 @@ impl Log for VectorLogger {
     }
 }
 
-pub static LOGGER: Lazy<Arc<VectorLogger>> = Lazy::new(|| {
+pub static LOGGER: LazyLock<Arc<VectorLogger>> = LazyLock::new(|| {
     let logger = VectorLogger::new();
     let logger_ref = Arc::new(logger);
     log::set_boxed_logger(Box::new(logger_ref.clone())).unwrap();
