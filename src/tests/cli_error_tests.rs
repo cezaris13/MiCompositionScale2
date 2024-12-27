@@ -144,28 +144,28 @@ mod tests {
             CliError::ParseError(err) => {
                 assert_eq!(err.to_string(), "expected value at line 1 column 1")
             }
-            _ => assert!(false,"Expected CliError::ParseError"),
+            _ => assert!(false, "Expected CliError::ParseError"),
         }
 
         let btle_error = btleplug::Error::DeviceNotFound;
         let cli_error: CliError = btle_error.into();
         match cli_error {
             CliError::BluetoothError(err) => assert_eq!(err.to_string(), "Device not found"),
-            _ => assert!(false,"Expected CliError::BluetoothError"),
+            _ => assert!(false, "Expected CliError::BluetoothError"),
         }
 
         let io_error = io::Error::new(io::ErrorKind::Other, "IO test error");
         let cli_error: CliError = io_error.into();
         match cli_error {
             CliError::IOError(err) => assert_eq!(err.to_string(), "IO test error"),
-            _ => assert!(false,"Expected CliError::IOError"),
+            _ => assert!(false, "Expected CliError::IOError"),
         }
         let io_error = io::Error::new(io::ErrorKind::Other, "IO test error");
         let opener_error = opener::OpenError::Io(io_error);
         let cli_error: CliError = opener_error.into();
         match cli_error {
             CliError::OpenerError(err) => assert_eq!(err.to_string(), "IO error"),
-            _ => assert!(false,"Expected CliError::OpenerError"),
+            _ => assert!(false, "Expected CliError::OpenerError"),
         }
     }
 }

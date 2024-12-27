@@ -368,6 +368,7 @@ mod tests {
         LOGGER.clear_logs();
         let logger_ref = LOGGER.clone();
 
+        let client = reqwest::Client::new();
         let utils = Utils::new();
         let new_access_token = "new access token";
 
@@ -398,11 +399,7 @@ mod tests {
             serde_json::to_string(&test_config()).unwrap(),
         );
 
-        let sut = Authorization {
-            utils: &utils,
-            http_request_handler: &mock_http_handler,
-            http_client: &reqwest::Client::new(),
-        };
+        let sut = Authorization::new(&utils, &mock_http_handler, &client);
 
         let result = sut.refresh_access_token().await;
 
@@ -827,7 +824,7 @@ mod tests {
 
         sleep(Duration::from_millis(100));
 
-        let message = format!("GET /path HTTP/1.1\r\nHost: 127.0.0.1\r\n\r\n");
+        let message = String::from("GET /path HTTP/1.1\r\nHost: 127.0.0.1\r\n\r\n");
 
         let data = test_tcp_client_get_data(message);
         assert_eq!(data, "");
