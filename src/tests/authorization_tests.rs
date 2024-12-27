@@ -14,11 +14,11 @@ mod tests {
     use crate::utils::{IUtils, Utils};
 
     use oauth2::url::Url;
-    use oauth2::CsrfToken;
+    use oauth2::{AuthorizationCode, CsrfToken};
     use reqwest::StatusCode;
     use serial_test::serial;
     use std::fs;
-    use std::sync::mpsc::channel;
+    use std::sync::mpsc::{channel, Sender};
     use std::thread;
     use std::time::Duration;
     use std::time::{SystemTime, UNIX_EPOCH};
@@ -775,18 +775,7 @@ mod tests {
         let csrf_state = CsrfToken::new(mock_state.to_string());
         let (tx, rx) = channel();
 
-        spawn(move || {
-            let sut = Authorization {
-                utils: &MockIUtils::new(),
-                http_request_handler: &MockIHttpRequestHandler::new(),
-                http_client: &reqwest::Client::new(),
-            };
-
-            let result = sut.get_code_from_tcp_listener(csrf_state);
-            if tx.send(result).is_err() {
-                eprintln!("Failed to send the result to the main thread");
-            }
-        });
+        start_tcp_server_thread(tx, csrf_state);
 
         sleep(Duration::from_millis(100));
 
@@ -801,5 +790,99 @@ mod tests {
             Ok(Ok(result)) => assert_eq!(result.secret(), mock_code),
             _ => assert!(false, "Failed to receive the result"),
         };
+    }
+
+    #[test]
+    #[serial]
+    fn get_code_from_tcp_listener_state_does_not_exist_returns_error() {
+        let mock_code = "mock_code";
+
+        let csrf_state = CsrfToken::new(String::from("some state"));
+        let (tx, rx) = channel();
+
+        start_tcp_server_thread(tx, csrf_state);
+
+        sleep(Duration::from_millis(100));
+
+        let message = format!("GET /path?code={mock_code} HTTP/1.1\r\nHost: 127.0.0.1\r\n\r\n");
+
+        let data = test_tcp_client_get_data(message);
+        assert_eq!(data, "");
+
+        match rx.recv() {
+            Ok(Err(CliError::Error(message))) => {
+                assert_eq!(message, "Value for key state was not found")
+            }
+            _ => assert!(false, "Failed to receive the result"),
+        };
+    }
+
+    #[test]
+    #[serial]
+    fn get_code_from_tcp_listener_code_does_not_exist_returns_error() {
+        let csrf_state = CsrfToken::new(String::from("some state"));
+        let (tx, rx) = channel();
+
+        start_tcp_server_thread(tx, csrf_state);
+
+        sleep(Duration::from_millis(100));
+
+        let message = format!("GET /path HTTP/1.1\r\nHost: 127.0.0.1\r\n\r\n");
+
+        let data = test_tcp_client_get_data(message);
+        assert_eq!(data, "");
+
+        match rx.recv() {
+            Ok(Err(CliError::Error(message))) => {
+                assert_eq!(message, "Value for key code was not found")
+            }
+            _ => assert!(false, "Failed to receive the result"),
+        };
+    }
+
+    #[test]
+    #[serial]
+    fn get_code_from_tcp_listener_csrf_does_not_match_returns_error() {
+        let mock_code = "mock_code";
+        let mock_state = "test_csrf_state";
+
+        let csrf_state = CsrfToken::new(String::from("some other state"));
+        let (tx, rx) = channel();
+
+        start_tcp_server_thread(tx, csrf_state);
+
+        sleep(Duration::from_millis(100));
+
+        let message = format!(
+            "GET /path?code={mock_code}&state={mock_state} HTTP/1.1\r\nHost: 127.0.0.1\r\n\r\n"
+        );
+
+        let data = test_tcp_client_get_data(message);
+        assert_eq!(data, "HTTP/1.1 200 OK\r\ncontent-length: 48\r\n\r\nToken has been retrieved. You may close the tab.");
+
+        match rx.recv() {
+            Ok(Err(CliError::Error(message))) => {
+                assert_eq!(message, "CSRF state mismatch. Malicious actor?")
+            }
+            _ => assert!(false, "Failed to receive the result"),
+        };
+    }
+
+    fn start_tcp_server_thread(
+        tx: Sender<Result<AuthorizationCode, CliError>>,
+        csrf_state: CsrfToken,
+    ) {
+        spawn(move || {
+            let sut = Authorization {
+                utils: &MockIUtils::new(),
+                http_request_handler: &MockIHttpRequestHandler::new(),
+                http_client: &reqwest::Client::new(),
+            };
+
+            let result = sut.get_code_from_tcp_listener(csrf_state);
+            if tx.send(result).is_err() {
+                eprintln!("Failed to send the result to the main thread");
+            }
+        });
     }
 }
