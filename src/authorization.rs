@@ -18,7 +18,7 @@ use oauth2::{
     RevocationErrorResponseType, Scope, StandardErrorResponse, StandardRevocableToken,
     StandardTokenIntrospectionResponse, StandardTokenResponse, TokenResponse, TokenUrl,
 };
-use reqwest::header::{AUTHORIZATION, CONTENT_TYPE};
+use reqwest::header::{AUTHORIZATION, CONTENT_LENGTH, CONTENT_TYPE};
 use reqwest::Client;
 use serde_json::{from_str, from_value};
 use std::fs::{self, File};
@@ -137,8 +137,7 @@ impl<'a> IAuthorization for Authorization<'a> {
 
     async fn refresh_access_token(&self) -> Result<String, CliError> {
         let refresh_token: String = self.read_auth_token()?.refresh_token;
-        // let client_id: String = self.utils.read_configuration_file()?.client_id;
-        let client_id: String = String::from("");
+        let client_id: String = self.utils.read_configuration_file()?.client_id;
         let client_secret: String = self.utils.read_configuration_file()?.client_secret;
 
         let encoded_client_data = BASE64_STANDARD.encode(client_id + ":" + &client_secret);
@@ -153,6 +152,7 @@ impl<'a> IAuthorization for Authorization<'a> {
             .post(url)
             .header(AUTHORIZATION, format!("Basic {encoded_client_data}"))
             .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
+            .header(CONTENT_LENGTH, 0)
             .send()
             .await;
 
